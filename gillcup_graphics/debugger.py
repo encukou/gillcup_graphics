@@ -42,16 +42,52 @@ class Main(urwid.Frame):
             self.clock_column.speed_down()
         elif key in '+=':
             self.clock_column.speed_up()
+        elif key in '0':
+            self.clock_column.speed_normal()
         elif key == 'esc':
             raise urwid.ExitMainLoop()
         else:
             return key
 
 
+class EventListWalker(urwid.ListWalker):
+    def __init__(self, clock):
+        super(EventListWalker, self).__init__()
+        self.clock = clock
+        self.position = 0
+        self._modified = self._modified
+        clock.schedule_update_function(self._modified)
+
+    def get_at(self, pos):
+        clock.events.sort()
+        if pos < 0:
+            return urwid.Text(''), -1
+        if pos > len(self.clock.events) - 1:
+            return urwid.Text(''), len(self.clock.events)
+        event = clock.events[pos]
+        size = len('{0:.3f}'.format(clock.events[-1].time))
+        text = '{0:{1}.3f} {2}'.format(
+            event.time, size, event.action)
+        return urwid.Text(text), pos
+
+    def get_focus(self):
+        return self.get_at(self.position)
+
+    def get_next(self, position):
+        return self.get_at(position + 1)
+
+    def get_prev(self, position):
+        return self.get_at(position - 1)
+
+    def set_focus(self, position):
+        self.position = position
+        self._modified()
+
+
 class TimeColumn(urwid.Frame):
     def __init__(self, clock):
         self.clock = clock
-        self.event_view = urwid.SolidFill('×')
+        self.event_view = urwid.ListBox(EventListWalker(clock))
         self.clock_header = urwid.Text('')
         super(TimeColumn, self).__init__(self.event_view,
             header=self.clock_header)
@@ -65,6 +101,7 @@ class TimeColumn(urwid.Frame):
             speed_str = '❚❚ '
         else:
             speed_str = ' ▶ '
+        self.clock_speed = fractions.Fraction(self.clock_speed)
         if self.clock_speed.numerator != 1:
             speed_str += '×{}'.format(self.clock_speed.numerator)
         if self.clock_speed.denominator != 1:
@@ -83,6 +120,10 @@ class TimeColumn(urwid.Frame):
 
     def speed_up(self):
         self.clock_speed *= 2
+        self.update_clock_speed()
+
+    def speed_normal(self):
+        self.clock_speed = 1
         self.update_clock_speed()
 
     def update_clock_speed(self):
@@ -105,7 +146,12 @@ if __name__ == '__main__':
     rect = gillcup_graphics.Rectangle(layer, relative_anchor=(0.5, 0.5),
         position=(0.5, 0.5), size=(0.5, 0.5))
     clock = gillcup_graphics.RealtimeClock()
-    clock.schedule(gillcup.Animation(rect, 'rotation', 180, time=1,
+    clock.schedule(gillcup.Animation(rect, 'rotation', 180, time=10,
         timing='infinite'))
+    import random
+    for i in xrange(1000):
+        clock.schedule(gillcup.Animation(rect, 'position',
+            random.random(), random.random(), time=5, easing='quadratic'),
+            dt=i/3)
 
     run(clock, layer, resizable=True)
