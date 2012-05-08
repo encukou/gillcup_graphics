@@ -32,6 +32,7 @@ class Window(pyglet.window.Window):  # pylint: disable=W0223
 
     def manual_draw(self):
         """Draw the contents outside of the main loop"""
+        self.switch_to()
         self.on_draw()
         self.flip()
 
