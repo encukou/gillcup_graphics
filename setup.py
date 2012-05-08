@@ -10,7 +10,7 @@ setup_args = dict(
     description="""Pyglet graphics for Gillcup""",
     author='Petr Viktorin',
     author_email='encukou@gmail.com',
-    install_requires=['gillcup>=0.2.0-alpha', 'pyglet>=1.1.4'],
+    install_requires=['gillcup>=0.2.0-alpha', 'pyglet==1.1.4'],
     classifiers=[
             'Intended Audience :: Developers',
             'License :: OSI Approved :: MIT License',

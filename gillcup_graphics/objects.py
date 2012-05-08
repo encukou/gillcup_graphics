@@ -2,19 +2,20 @@
 
 This module provides basic objects you can draw and animate.
 
-Perhaps the most important of these is the Layer, which does not have a
-graphical representation but can contain other objects, such as Rectangles,
-Sprites or other Layers.
-The containing Layer is called the ``parent`` of the contained object.
+Perhaps the most important of these is the :class:`Layer`, which does not have
+a graphical representation by itself, but can contain other objects, such as a
+:class:`~gillcup_graphics.Rectangle`, :class:`~gillcup_graphics.Sprite` or
+another :class:`~gillcup_graphics.Layer`.
 Graphics objects are thus arranged in a scene tree.
-The tree is rooted at a parent-less Layer[#f1]_, which will usually be shown in
-a Window.
+The tree is rooted at a parent-less Layer [#f1]_, which will usually be shown
+in a :class:`~gillcup_graphics.Window`.
 
 Each object has a lot of AnimatedProperties that control its position on the
 screen (relative to its parent), and properties like color and opacity.
 
 The objects are compatible with 3D transformations, but anything outside the
-xy-plane needs custom OpenGL camera setup.
+`z=0` plane needs custom OpenGL camera setup.
+Refer to Pyglet documentation for details.
 
 .. [#f1] To be precise, the root may be any object. It's just that non-Layers
     aren't terribly useful here.
@@ -30,13 +31,29 @@ import gillcup
 from gillcup import properties
 from gillcup.effect import Effect
 
-
 color_property = gillcup.TupleProperty(1, 1, 1,
-    docstring="""Color or tint of the object""")
+    docstring="""Color or tint of the object
+
+    The individual components are in the ``red``, ``green``, ``blue``
+    attributes.""")
+
+opacity_property = gillcup.AnimatedProperty(1,
+        docstring="""Opacity of the object""")
 
 
 class GraphicsObject(object):
-    """Base class for gillcup_graphics objects
+    """Base class for gillcup_graphics scene objects
+
+    :param parent: The parent :class:`Layer` in the scene tree
+    :param to_back: If false (default), the object is inserted at the end of
+        the parent's children list, and thus is drawn after (in front of) its
+        existing siblings.
+        If true, it will be is drawn before (behind) them.
+    :param name: An optional name of the object. It is stored in the ``name``
+        attribute.
+    :param kwargs: Any animated property (including those from subclasses)
+        can be initialized by passing a value as a keyword argument to
+        ``__init__``.
     """
     def __init__(self,
             parent=None,
@@ -57,17 +74,27 @@ class GraphicsObject(object):
         docstring="""The object's position in space
 
         This is an offset between the parent's anchor and this object's own
-        anchor, in the parent's coordinates.""")
+        anchor, in the parent's coordinates.
+
+        The individual components are in the ``x``, ``y``, ``z``
+        attributes.""")
     anchor_x, anchor_y, anchor_z = anchor = properties.VectorProperty(3,
-        docstring="""A point that represents this object for positioning""")
+        docstring="""A point that represents this object for positioning.
+
+        The individual components are in the ``anchor_x``, ``anchor_y``,
+        ``anchor_z`` attributes.""")
     scale_x, scale_y, scale_z = scale = properties.ScaleProperty(3,
-        docstring="""The object's scale""")
+        docstring="""The object's scale.
+
+        The individual components are in the ``scale_x``, ``scale_y``,
+        ``scale_z`` attributes.""")
     width, height = size = properties.ScaleProperty(2,
-        docstring="""The object's natural size""")
+        docstring="""The object's natural size
+
+        The individual components are in the ``width`` and ``height``
+         attributes.""")
     rotation = gillcup.AnimatedProperty(0,
         docstring="""Rotation about the object's anchor""")
-    opacity = gillcup.AnimatedProperty(1,
-        docstring="""Opacity of the object""")
     relative_anchor = properties.VectorProperty(3,
         docstring="""Anchor of the object relative to the object's size
 
@@ -77,7 +104,9 @@ class GraphicsObject(object):
 
         This property is only effective if ``anchor`` is not set by other
         means.
-        """)
+
+        The individual components are in the ``relative_anchor_x``,
+        ``relative_anchor_y``, ``relative_anchor_z`` attributes.""")
     relative_anchor_x, relative_anchor_y, relative_anchor_z = relative_anchor
 
     def set_animated_properties(self, kwargs):
@@ -98,8 +127,10 @@ class GraphicsObject(object):
                     ', '.join(unknown))
 
     def is_hidden(self):
-        """Return true if this layer shouldn't be shown"""
-        return self.dead or self.opacity <= 0 or not any(self.scale)
+        """Return true if this object (and any children) shouldn't be shown"""
+        if getattr(self, 'opacity', 1) <= 0:
+            return False
+        return self.dead or not any(self.scale)
 
     def do_draw(self, transformation, **kwargs):
         """Draw this object
@@ -121,11 +152,28 @@ class GraphicsObject(object):
 
     def draw(self, **kwargs):
         """Draw this object. Overridden in subclasses.
+
+        :param transformation: A
+            :class:`~gillcup_graphics.transformation.GlTransformation` object
+            controlling the current OpenGL matrix.
+        :param window: A :class:`~gillcup_graphics.Window` for which the
+            drawing is done.
+
+        Additional keyword arguments might be present. Unknown ones should
+        be passed to child objects unchanged.
         """
         pass
 
     def change_matrix(self, transformation):
         """Set up the transformation matrix for object
+
+        :param transformation: The
+            :class:`~gillcup_graphics.transformation.BaseTransformation` object
+            to modify in-place.
+
+        No :meth:`~gillcup_graphics.transformation.BaseTransformation.push`
+        or :meth:`~gillcup_graphics.transformation.BaseTransformation.pull`
+        calls should be made, only transformations.
         """
         transformation.translate(*self.position)
         transformation.rotate(self.rotation, 0, 0, 1)
@@ -157,7 +205,8 @@ class GraphicsObject(object):
         """Set a new parent
 
         Remove this object from the current parent (if there is one) and
-        attech to a new one. The to_back argument is the same as for __init__.
+        attech to a new one (if new_parent is not ``None``.
+        The `to_back` argument is the same as for :meth:`__init__`.
         """
         assert new_parent is not self
         if self.parent:
@@ -187,7 +236,13 @@ class RelativeAnchor(Effect):
 
 
 class Layer(GraphicsObject):
-    """A container for GraphicsObjects"""
+    """A container for GraphicsObjects
+
+    The Layer is unique in that it can contain child objects.
+
+    Init arguments are the same as for
+    :class:`~gillcup_graphics.GraphicsObject`.
+    """
     def __init__(self, parent=None, **kwargs):
         super(Layer, self).__init__(parent, **kwargs)
         self.children = []
@@ -202,6 +257,7 @@ class Layer(GraphicsObject):
                     yield self
 
     def draw(self, transformation, **kwargs):
+        """Draw all of the layer's children"""
         transformation.translate(*self.anchor)
         self.children = [
                 c for c in self.children if c.do_draw(
@@ -224,6 +280,7 @@ class Rectangle(GraphicsObject):
     """A box of color"""
 
     color = red, green, blue = color_property
+    opacity = opacity_property
 
     vertices = (gl.GLfloat * 8)(0, 0, 1, 0, 1, 1, 0, 1)
 
@@ -237,9 +294,17 @@ class Rectangle(GraphicsObject):
 
 
 class Sprite(GraphicsObject):
-    """An image"""
+    """An image
+
+    :param texture: A Pyglet image to show in this sprite.
+        You can use the :meth:`pyglet.image.load` to obtain one.
+
+    Other init arguments are the same as for
+    :class:`~gillcup_graphics.GraphicsObject`.
+    """
 
     color = red, green, blue = color_property
+    opacity = opacity_property
 
     def __init__(self, parent, texture, **kwargs):
         self.sprite = pyglet.sprite.Sprite(texture.get_texture())
@@ -258,13 +323,20 @@ class Sprite(GraphicsObject):
 
 
 class Text(GraphicsObject):
-    """A text label"""
-    def __init__(self,
-            parent,
-            text,
-            font_name=None,
-            **kwargs
-        ):
+    """A text label
+
+    :param text: A string to display n this label
+    :param font_name: Name of the font to use. See Pyglet documentation for
+        more info on using fonts.
+
+    Other init arguments are the same as for
+    :class:`~gillcup_graphics.GraphicsObject`.
+
+    .. note::
+
+        The API regarding font size is experimental.
+    """
+    def __init__(self, parent, text, font_name=None, **kwargs):
         super(Text, self).__init__(parent, **kwargs)
         self.text = text
         self.font_name = font_name
@@ -275,10 +347,11 @@ class Text(GraphicsObject):
             )
 
     color = red, green, blue = color_property
+    opacity = opacity_property
     font_size = gillcup.AnimatedProperty(72,
         docstring="The size of the font")
     characters_displayed = gillcup.AnimatedProperty(sys.maxint,
-        docstring="The number of characters displayed")
+        docstring="The maximum number of characters displayed")
 
     def setup(self):
         """Assign the properties to the underlying Pyglet label"""
@@ -302,6 +375,9 @@ class Text(GraphicsObject):
 
         Returns the size of the entire text, i.e. doesn't take
         ``characters_displayed`` into account.
+
+        The ``width`` and ``height`` attributes contain the size's individual
+        components.
         """
         self.setup()
         label = self.label

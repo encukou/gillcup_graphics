@@ -100,7 +100,7 @@ class GlTransformation(BaseTransformation):
         gl.glMultMatrixf(*values)
 
 
-class MatrixTransformation(BaseTransformation):
+class TupleTransformation(BaseTransformation):
     """Implementation that uses tuples. Slow.
     """
     def __init__(self):
@@ -204,7 +204,7 @@ class MatrixTransformation(BaseTransformation):
             )
 
     def transform_point(self, x=0, y=0, z=0):
-        """Multiply the given vector by this matrix"""
+        """Return the given vector multiplied by this matrix"""
         (m1_0, m1_1, m1_2, m1_3,
          m1_4, m1_5, m1_6, m1_7,
          m1_8, m1_9, m1_10, m1_11,
@@ -275,3 +275,5 @@ class MatrixTransformation(BaseTransformation):
         m[14] = - (i12 * m[2] + i13 * m[6] + i14 * m[10])
 
         return tuple(m)
+
+MatrixTransformation = TupleTransformation

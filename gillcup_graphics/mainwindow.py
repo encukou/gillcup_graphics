@@ -16,7 +16,14 @@ run = pyglet.app.run
 class Window(pyglet.window.Window):  # pylint: disable=W0223
     """A main window
 
-    Just a convenience subclass of pyglet.window.Window that shows a Layer
+    A convenience subclass of pyglet.window.Window that shows a
+    :class:`~gillcup_graphics.Layer`
+
+    :param layer: The layer to show. Its
+        :attr:`~gillcup_graphics.GraphicsObject.scale` will be automatically
+        adjusted to fit the window.
+
+    Other arguments are passed to Pyglet's window constructor.
     """
     def __init__(self, layer, *args, **kwargs):
         super(Window, self).__init__(*args, **kwargs)
@@ -47,7 +54,10 @@ class Window(pyglet.window.Window):  # pylint: disable=W0223
 
 
 class RealtimeClock(gillcup.Clock):
-    """A Clock tied to the system time
+    """A :class:`gillcup.Clock` tied to the system time
+
+    Note that the Pyglet main loop must be running (or the Pyglet clock must
+    be ticked otherwise) for this to work.
     """
     def __init__(self):
         super(RealtimeClock, self).__init__()

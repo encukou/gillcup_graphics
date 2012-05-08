@@ -6,7 +6,7 @@ graphics objects.
 
 This wors by rendering the layer's contents to a texture, and then drawing the
 texture with effects applied.
-Currently, the framebuffer object OpenGL extension to work.
+Currently, it needs the Framebuffer Object (FBO) OpenGL extension to work.
 """
 
 from pyglet import gl
@@ -23,8 +23,7 @@ class EffectLayer(Layer):
     """A Layer that can colorie, fade, or pixelate its contents as a whole
     """
     color = red, green, blue = objects.color_property
-    opacity = properties.AnimatedProperty(1,
-        docstring="""Opacity of this layer""")
+    opacity = objects.opacity_property
     mosaic = mosaic_x, mosaic_y = properties.ScaleProperty(2,
         docstring=u"""Pixelation of this layer
 
@@ -34,7 +33,7 @@ class EffectLayer(Layer):
     _opacity_data = None
 
     def need_offscreen(self):
-        """
+        """Return true if off-screen rendering is needed
 
         Off-screen rendering is only done if needed, i.e. if ``color``,
         ``opacity`` or ``mosaic`` don't have their default values.
