@@ -7,6 +7,7 @@ import urwid
 import pyglet
 import fractions
 import weakref
+import collections
 
 import gillcup_graphics
 import gillcup
@@ -141,9 +142,13 @@ class TimeColumn(urwid.Frame):
 
 
 class TreeWalker(urwid.ListWalker):
-    def __init__(self):
+    list = ()
+
+    def __init__(self, obj=None):
         super(TreeWalker, self).__init__()
         self.position = []
+        self.cache = weakref.WeakKeyDictionary()
+        self.obj = obj
 
     def get_item(self, position):
         if position:
@@ -167,11 +172,11 @@ class TreeWalker(urwid.ListWalker):
             pos = self[index].next_position(position[1:])
             if pos is not None:
                 return [index] + pos
-            elif index + 1 < len(self):
+            elif index + 1 < len(self.list):
                 return [index + 1]
             else:
                 return None
-        elif len(self):
+        elif len(self.list):
             return [0]
         else:
             return None
@@ -190,8 +195,8 @@ class TreeWalker(urwid.ListWalker):
             return None
 
     def last_position(self):
-        if len(self):
-            last = len(self) - 1
+        if len(self.list):
+            last = len(self.list) - 1
             return [last] + self[last].last_position()
         else:
             return []
@@ -206,11 +211,16 @@ class TreeWalker(urwid.ListWalker):
         self.position = position
         self._modified()
 
-    def __len__(self):
+    def __getitem__(self, pos):
+        item = self.list[pos]
         try:
-            return super(TreeWalker, self).__len__()
-        except TypeError:
-            return 0
+            return self.cache[item]
+        except KeyError:
+            rv = self.cache[item] = self.make_child(item)
+            return rv
+
+    def make_child(self, item):
+        return item
 
 
 class SceneGraphWalker(TreeWalker):
@@ -219,29 +229,25 @@ class SceneGraphWalker(TreeWalker):
         self.layers = layers
         self._modified = self._modified
         clock.schedule_update_function(self._modified)
-        self.cache = weakref.WeakKeyDictionary()
 
     @property
     def widget(self):
         return urwid.Text('Layers', wrap='clip')
 
-    def __len__(self):
-        return len(self.layers)
+    @property
+    def list(self):
+        return self.layers
 
-    def __getitem__(self, pos):
-        item = self.layers[pos]
-        try:
-            return self.cache[item]
-        except KeyError:
-            rv = self.cache[item] = GraphicsObjectWalker(item)
-            return rv
+    def make_child(self, item):
+        return GraphicsObjectWalker(item)
 
 
 class GraphicsObjectWalker(TreeWalker):
     def __init__(self, obj):
-        super(GraphicsObjectWalker, self).__init__()
-        self.obj = obj
-        self.cache = weakref.WeakKeyDictionary()
+        self.list = (
+                ChildrenWalker(obj),
+            )
+        super(GraphicsObjectWalker, self).__init__(obj)
 
     @property
     def widget(self):
@@ -253,16 +259,17 @@ class GraphicsObjectWalker(TreeWalker):
         text = [name_part, '({0})'.format(type(obj).__name__)]
         return urwid.Text(text, wrap='clip')
 
-    def __len__(self):
-        return len(self.obj.children)
+class ChildrenWalker(TreeWalker):
+    @property
+    def list(self):
+        return self.obj.children
 
-    def __getitem__(self, pos):
-        item = self.obj.children[pos]
-        try:
-            return self.cache[item]
-        except KeyError:
-            rv = self.cache[item] = GraphicsObjectWalker(item)
-            return rv
+    @property
+    def widget(self):
+        return urwid.Text('[children]', wrap='clip')
+
+    def make_child(self, item):
+        return GraphicsObjectWalker(item)
 
 
 class SceneColumn(urwid.Frame):

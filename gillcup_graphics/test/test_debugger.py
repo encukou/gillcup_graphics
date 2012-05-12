@@ -13,7 +13,7 @@ except ImportError:
 from gillcup_graphics import debugger
 
 
-class DebugTreeWalker(debugger.TreeWalker, list):
+class DebugTreeWalker(debugger.TreeWalker):
     def __init__(self, nested_list):
         super(DebugTreeWalker, self).__init__()
         try:
@@ -21,23 +21,11 @@ class DebugTreeWalker(debugger.TreeWalker, list):
         except TypeError:
             pass
         else:
-            self.extend(DebugTreeWalker(i) for i in iterator)
+            self.list = list(DebugTreeWalker(i) for i in iterator)
         self.widget = str(nested_list)
 
     def __repr__(self):
         return '<%s>' % self.widget
-
-    def next_position(self, pos):
-        print 'next', self, pos, len(self), bool(self), list(self)
-        return super(DebugTreeWalker, self).next_position(pos)
-
-    def prev_position(self, pos):
-        print 'prev', self, pos, len(self), bool(self), list(self)
-        return super(DebugTreeWalker, self).prev_position(pos)
-
-    def last_position(self):
-        print 'last', self, len(self), bool(self), list(self), len(list(self))
-        return super(DebugTreeWalker, self).last_position()
 
     def check_linearization(self, *items):
         assert items[0] == []
