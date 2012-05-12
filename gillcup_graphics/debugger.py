@@ -231,7 +231,7 @@ class TreeWalker(urwid.ListWalker):
 
     def __init__(self, obj=None):
         super(TreeWalker, self).__init__()
-        self.position = []
+        self.persistent_position = []
         self.cache = self.cache_class()
         self.obj = obj
 
@@ -247,9 +247,6 @@ class TreeWalker(urwid.ListWalker):
         else:
             item = self.get_item(position)
             return TreeWidget.new(item, len(position)), position
-
-    def get_focus(self):
-        return self.get_at(self.position)
 
     def next_position(self, position):
         if position:
@@ -292,9 +289,42 @@ class TreeWalker(urwid.ListWalker):
     def get_prev(self, position):
         return self.get_at(self.prev_position(position))
 
+    def get_focus(self):
+        position = self.get_indexed_position(self.persistent_position)
+        return self.get_at(position)
+
     def set_focus(self, position):
-        self.position = position
+        self.persistent_position = self.get_persistent_position(position)
         self._modified()
+
+    def get_persistent_position(self, position):
+        if position:
+            pos = position[0]
+            item = self.list[pos]
+            tail = position[1:]
+            return [(item, pos)] + self[pos].get_persistent_position(tail)
+        else:
+            return []
+
+    def get_indexed_position(self, persistent_position):
+        if persistent_position:
+            item, pos = persistent_position[0]
+            try:
+                pos = self.list.index(item)
+            except ValueError:
+                # The item the persistent position referred to was deleted!
+                if pos < len(self):
+                    return [pos]
+                else:
+                    if len(self):
+                        return [len(self) - 1]
+                    else:
+                        return []
+            else:
+                tail = persistent_position[1:]
+                return [pos] + self[pos].get_indexed_position(tail)
+        else:
+            return []
 
     def __len__(self):
         if self.expanded:
@@ -506,13 +536,29 @@ if __name__ == '__main__':
         timing='infinite'))
     clock.schedule(gillcup.Animation(rotating_layer, 'rotation', -180, time=10,
         timing='infinite'))
-    def schedule_next_waypoint():
-        clock.schedule(gillcup.Animation(rect, 'position', r(), r(), time=5,
-            easing='quadratic'))
-        clock.schedule(schedule_next_waypoint, 1)
+    def next_waypoint():
+        clock.schedule(next_waypoint, 1 / 2)
+        clock.schedule(gillcup.Animation(rect,
+            'position', r(), r(), time=5, easing='quadratic'))
         new_rect = make_random_rect(rotating_layer, -0.5)
         new_rect.opacity = 0
         clock.schedule(gillcup.Animation(new_rect, 'opacity', 1, time=1))
-    schedule_next_waypoint()
+        new_rect.name = 'R{0}'.format(clock.time)
+    def delete_random_rect():
+        if not rotating_layer.children:
+            return
+        victim = random.choice(rotating_layer.children)
+        clock.schedule(gillcup.Animation(victim, 'opacity', 0, time=1 + r()) +
+            victim.die)
+    def next_deletion():
+        clock.schedule(next_deletion, 1 + r())
+        delete_random_rect()
+    def next_masskill():
+        clock.schedule(next_masskill, 10)
+        for c in rotating_layer.children[5:]:
+            delete_random_rect()
+    next_deletion()
+    next_masskill()
+    next_waypoint()
 
     run(clock, layer, resizable=True)
