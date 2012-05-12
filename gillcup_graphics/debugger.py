@@ -61,7 +61,10 @@ class Main(urwid.Frame):
         loop.set_alarm_in(1 / 30, self.tick, None)
 
     def keypress(self, size, key):
-        if key == ' ':
+        key = super(Main, self).keypress(size, key)
+        if not key:
+            return
+        elif key == ' ':
             self.clock_column.toggle_pause()
         elif key in '-_':
             self.clock_column.speed_down()
@@ -207,6 +210,19 @@ class TreeWidget(object):
             canvas.fill_attr_apply(select_mapping)
         return canvas
 
+    def keypress(self, size, key):
+        if key == 'right':
+            if self.item.expanded:
+                if len(self.item.list):
+                    return 'down'
+            else:
+                self.item.expanded = True
+        elif key == 'left':
+            if self.item.expanded:
+                self.item.expanded = False
+        else:
+            return key
+
 
 class TreeWalker(urwid.ListWalker):
     list = ()
@@ -240,11 +256,11 @@ class TreeWalker(urwid.ListWalker):
             pos = self[index].next_position(position[1:])
             if pos is not None:
                 return [index] + pos
-            elif index + 1 < len(self.list):
+            elif index + 1 < len(self):
                 return [index + 1]
             else:
                 return None
-        elif len(self.list):
+        elif len(self):
             return [0]
         else:
             return None
@@ -263,8 +279,8 @@ class TreeWalker(urwid.ListWalker):
             return None
 
     def last_position(self):
-        if len(self.list):
-            last = len(self.list) - 1
+        if len(self):
+            last = len(self) - 1
             return [last] + self[last].last_position()
         else:
             return []
@@ -278,6 +294,12 @@ class TreeWalker(urwid.ListWalker):
     def set_focus(self, position):
         self.position = position
         self._modified()
+
+    def __len__(self):
+        if self.expanded:
+            return len(self.list)
+        else:
+            return 0
 
     def __getitem__(self, pos):
         item = self.list[pos]
@@ -370,6 +392,7 @@ if __name__ == '__main__':
             position=(r() + d, r() + d), color=(r(), r(), r()))
         clock.schedule(gillcup.Animation(rect, 'rotation', r() * 180 - 90,
             time=1, timing='infinite'))
+        return rect
     for i in range(10):
         make_random_rect()
     rect = gillcup_graphics.Rectangle(layer, name='Big rect',
@@ -384,7 +407,9 @@ if __name__ == '__main__':
         clock.schedule(gillcup.Animation(rect, 'position', r(), r(), time=5,
             easing='quadratic'))
         clock.schedule(schedule_next_waypoint, 1)
-        make_random_rect(rotating_layer, -0.5)
+        new_rect = make_random_rect(rotating_layer, -0.5)
+        new_rect.opacity = 0
+        clock.schedule(gillcup.Animation(new_rect, 'opacity', 1, time=1))
     schedule_next_waypoint()
 
     run(clock, layer, resizable=True)
