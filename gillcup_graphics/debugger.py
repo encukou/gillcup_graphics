@@ -136,7 +136,7 @@ class TimeColumn(urwid.Frame):
             speed_str += '×{}'.format(self.clock_speed.numerator)
         if self.clock_speed.denominator != 1:
             speed_str += '÷{}'.format(self.clock_speed.denominator)
-        self.clock_header.set_text('{0:.3f} ({1:.1f} fps)\n{2}'.format(
+        self.clock_header.set_text('t={0:.3f}  (at {1:.1f} fps)\n{2}'.format(
             self.clock.time, pyglet.clock.get_fps(), speed_str))
         self._invalidate()
 
@@ -227,11 +227,12 @@ class TreeWidget(object):
 class TreeWalker(urwid.ListWalker):
     list = ()
     expanded = True
+    cache_class = weakref.WeakKeyDictionary
 
     def __init__(self, obj=None):
         super(TreeWalker, self).__init__()
         self.position = []
-        self.cache = weakref.WeakKeyDictionary()
+        self.cache = self.cache_class()
         self.obj = obj
 
     def get_item(self, position):
@@ -336,6 +337,7 @@ class GraphicsObjectWalker(TreeWalker):
     def __init__(self, obj):
         self.list = (
                 ChildrenWalker(obj),
+                PropertiesWalker(obj),
             )
         super(GraphicsObjectWalker, self).__init__(obj)
 
@@ -349,6 +351,7 @@ class GraphicsObjectWalker(TreeWalker):
         text = [('name', name_part), '({0})'.format(type(obj).__name__)]
         return urwid.Text(text, wrap='clip')
 
+
 class ChildrenWalker(TreeWalker):
     @property
     def list(self):
@@ -360,6 +363,60 @@ class ChildrenWalker(TreeWalker):
 
     def make_child(self, item):
         return GraphicsObjectWalker(item)
+
+
+class PropertiesWalker(TreeWalker):
+    cache_class = dict
+    names_cache = dict()
+
+    @property
+    def list(self):
+        cls = type(self.obj)
+        all_names = dir(cls)
+        try:
+            # Check if dir() still returns the same; if it does, return cached
+            # property names.
+            # XXX: This isn't 100% robust – if someone switches a non-animated
+            # property for an animated one, or vice versa, we won't notice the
+            # change
+            names, check_all_names = self.names_cache[cls]
+            if all_names == check_all_names:
+                return names
+        except KeyError:
+            pass
+        # We collect all AnimatedProperties, but filter out subproperties
+        props = {}
+        subprops = set()
+        for name in all_names:
+            prop = getattr(cls, name)
+            if isinstance(prop, gillcup.AnimatedProperty):
+                props[prop] = name
+                try:
+                    subproperties = prop.subproperties
+                except AttributeError:
+                    pass
+                else:
+                    subprops.update(prop.subproperties)
+        names = sorted(v for k, v in props.iteritems() if k not in subprops)
+        self.names_cache[cls] = names, all_names
+        return names
+
+    @property
+    def widget(self):
+        return urwid.Text('properties')
+
+    def make_child(self, item):
+        return PropertyWalker(self.obj, item)
+
+
+class PropertyWalker(TreeWalker):
+    def __init__(self, obj, name):
+        super(PropertyWalker, self).__init__(obj)
+        self.name = name
+
+    @property
+    def widget(self):
+        return urwid.Text([self.name, ' ', str(getattr(self.obj, self.name))])
 
 
 class SceneColumn(urwid.Frame):
