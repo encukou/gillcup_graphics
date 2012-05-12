@@ -12,7 +12,27 @@ import collections
 import gillcup_graphics
 import gillcup
 
-palette = {}
+palette = [
+        (None, 'light gray', 'black'),
+        ('name', 'white', 'black'),
+        ('selected', 'light gray', 'dark blue'),
+        ('name selected', 'white', 'dark blue'),
+    ]
+
+class SelectMapping(object):
+    def __contains__(self, item):
+        return True
+
+    def __getitem__(self, item):
+        if item:
+            if item.endswith('selected'):
+                return item
+            return '%s selected' % item
+        else:
+            return 'selected'
+
+
+select_mapping = SelectMapping()
 
 
 class Main(urwid.Frame):
@@ -183,6 +203,8 @@ class TreeWidget(object):
                 char = '·'
             overlay = urwid.CompositeCanvas(urwid.SolidCanvas(char, 1, 1))
             canvas.overlay(overlay, indent - self.indent_size, 0)
+        if focus:
+            canvas.fill_attr_apply(select_mapping)
         return canvas
 
 
@@ -302,7 +324,7 @@ class GraphicsObjectWalker(TreeWalker):
             name_part = obj.name + ' '
         else:
             name_part = ''
-        text = [name_part, '({0})'.format(type(obj).__name__)]
+        text = [('name', name_part), '({0})'.format(type(obj).__name__)]
         return urwid.Text(text, wrap='clip')
 
 class ChildrenWalker(TreeWalker):
@@ -332,7 +354,7 @@ class SceneColumn(urwid.Frame):
 
 def run(clock, layer, *args, **kwargs):
     main = Main(clock, layer)
-    loop = urwid.MainLoop(main, palette)
+    loop = urwid.MainLoop(main, palette=palette)
     loop.set_alarm_in(1 / 30, main.tick, None)
     window = gillcup_graphics.Window(layer, *args, **kwargs)
     loop.run()
