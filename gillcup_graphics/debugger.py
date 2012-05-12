@@ -141,8 +141,54 @@ class TimeColumn(urwid.Frame):
         self._set_text()
 
 
+class TreeWidget(object):
+    cache = collections.defaultdict(weakref.WeakKeyDictionary)
+
+    indent_size = 2
+
+    def __init__(self, item, indent):
+        self.item = item
+        self.indent = indent * self.indent_size
+
+    @classmethod
+    def new(cls, item, indent):
+        try:
+            return cls.cache[indent][item]
+        except KeyError:
+            rv = cls.cache[indent][item] = cls(item, indent)
+            return rv
+
+    def selectable(self):
+        return True
+
+    def rows(self, size, focus=False):
+        [maxcol] = size
+        maxcol -= self.indent
+        return self.item.widget.rows((maxcol, ), focus)
+
+    def render(self, size, focus=False):
+        [cols] = size
+        indent = self.indent
+        rows = self.rows(size)
+        orig_canvas = self.item.widget.render((cols - indent, ), focus)
+        canvas = urwid.CompositeCanvas(orig_canvas)
+        canvas.pad_trim_left_right(indent, 0)
+        if indent:
+            if len(self.item.list):
+                if self.item.expanded:
+                    char = '▾'
+                else:
+                    char = '▸'
+            else:
+                char = '·'
+            overlay = urwid.CompositeCanvas(urwid.SolidCanvas(char, 1, 1))
+            canvas.overlay(overlay, indent - self.indent_size, 0)
+        return canvas
+
+
 class TreeWalker(urwid.ListWalker):
     list = ()
+    expanded = True
 
     def __init__(self, obj=None):
         super(TreeWalker, self).__init__()
@@ -161,7 +207,7 @@ class TreeWalker(urwid.ListWalker):
             return None, None
         else:
             item = self.get_item(position)
-            return item.widget, position
+            return TreeWidget.new(item, len(position)), position
 
     def get_focus(self):
         return self.get_at(self.position)
@@ -266,7 +312,7 @@ class ChildrenWalker(TreeWalker):
 
     @property
     def widget(self):
-        return urwid.Text('[children]', wrap='clip')
+        return urwid.Text('children (%s)' % len(self.obj.children))
 
     def make_child(self, item):
         return GraphicsObjectWalker(item)
@@ -295,21 +341,28 @@ if __name__ == '__main__':
     import random
     layer = gillcup_graphics.Layer(name='Base')
     clock = gillcup_graphics.RealtimeClock()
-    for i in range(10):
-        r = random.random
-        rect = gillcup_graphics.Rectangle(layer, relative_anchor=(0.5, 0.5),
+    r = random.random
+    def make_random_rect(parent=layer, d=0):
+        rect = gillcup_graphics.Rectangle(parent, relative_anchor=(0.5, 0.5),
             size=(r() * 0.1, r() * 0.1), rotation=r() * 360,
-            position=(r(), r()), color=(r(), r(), r()))
-        clock.schedule(gillcup.Animation(rect, 'rotation', 180,
-            time=r() * 10 + 1, timing='infinite'))
-    rect = gillcup_graphics.Rectangle(layer, relative_anchor=(0.5, 0.5),
-        position=(0.5, 0.5), size=(0.5, 0.5))
+            position=(r() + d, r() + d), color=(r(), r(), r()))
+        clock.schedule(gillcup.Animation(rect, 'rotation', r() * 180 - 90,
+            time=1, timing='infinite'))
+    for i in range(10):
+        make_random_rect()
+    rect = gillcup_graphics.Rectangle(layer, name='Big rect',
+        relative_anchor=(0.5, 0.5), position=(0.5, 0.5), size=(0.5, 0.5))
+    rotating_layer = gillcup_graphics.Layer(layer, name='Rotating layer',
+        anchor=(0.5, 0.5), position=(0.5, 0.5), scale=1.5)
     clock.schedule(gillcup.Animation(rect, 'rotation', 180, time=10,
         timing='infinite'))
+    clock.schedule(gillcup.Animation(rotating_layer, 'rotation', -180, time=10,
+        timing='infinite'))
     def schedule_next_waypoint():
-        clock.schedule(gillcup.Animation(rect, 'position',
-            random.random(), random.random(), time=5, easing='quadratic'))
+        clock.schedule(gillcup.Animation(rect, 'position', r(), r(), time=5,
+            easing='quadratic'))
         clock.schedule(schedule_next_waypoint, 1)
+        make_random_rect(rotating_layer, -0.5)
     schedule_next_waypoint()
 
     run(clock, layer, resizable=True)

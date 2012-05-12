@@ -43,22 +43,18 @@ class DebugTreeWalker(debugger.TreeWalker):
 class TestTreeWalker(object):
     def test_empty(self):
         walker = DebugTreeWalker([])
-        assert walker.get_focus() == ('[]', [])
         assert walker.next_position([]) == None
         assert walker.prev_position([]) == None
 
     def test_one_element(self):
         walker = DebugTreeWalker([0])
-        assert walker.get_focus() == ('[0]', [])
         walker.check_linearization([], [0])
 
     def test_two_element(self):
         walker = DebugTreeWalker([0, 1])
-        assert walker.get_focus() == ('[0, 1]', [])
         walker.check_linearization([], [0], [1])
 
     def test_nested_elements(self):
         walker = DebugTreeWalker([0, [1, 2, 3], 4])
-        assert walker.get_focus() == ('[0, [1, 2, 3], 4]', [])
         walker[1].check_linearization([], [0], [1], [2])
         walker.check_linearization([], [0], [1], [1, 0], [1, 1], [1, 2], [2])
