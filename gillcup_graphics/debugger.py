@@ -1,6 +1,15 @@
 #!/usr/bin/env python
 # Encoding: UTF-8
 
+"""The Gillcup Graphics debugger
+
+Provides a console interface that allows inspecting live Gillcup Graphics
+scenes.
+
+Gillcup Graphics is powered by the Urwid library. (You'll need to install
+it manually, as it's not in the requirements)
+"""
+
 from __future__ import division, unicode_literals
 
 import urwid
@@ -23,6 +32,7 @@ palette = [
     ]
 
 def select_mapping(item):
+    """Mapping for fill_attr_apply to get the "selected" palette entries"""
     if item:
         if item.endswith('selected'):
             return item
@@ -35,6 +45,7 @@ select_mapping = dict((i[0], select_mapping(i[0])) for i in palette)
 
 
 class Main(urwid.Frame):
+    """The main GG Debugger widget"""
     _selectable = True
 
     def __init__(self, clock, layer):
@@ -49,6 +60,7 @@ class Main(urwid.Frame):
         super(Main, self).__init__(self.columns)
 
     def tick(self, loop, _data):
+        """Manual tick for the Pyglet main loop"""
         pyglet.clock.tick()
 
         for window in pyglet.app.windows:
@@ -60,6 +72,7 @@ class Main(urwid.Frame):
         loop.set_alarm_in(1 / 30, self.tick, None)
 
     def keypress(self, size, key):
+        """Global keypress handler"""
         key = super(Main, self).keypress(size, key)
         if not key:
             return
@@ -71,6 +84,12 @@ class Main(urwid.Frame):
             self.clock_column.speed_up()
         elif key in '0':
             self.clock_column.speed_normal()
+        elif key in '.':
+            self.clock_column.nudge_clock(1 / 30)
+        elif key in '>':
+            self.clock_column.nudge_clock(1)
+        elif key in 'n':
+            self.clock_column.next_action()
         elif key == 'esc':
             raise urwid.ExitMainLoop()
         else:
@@ -90,7 +109,7 @@ class EventListWalker(urwid.ListWalker):
         # not guaranteed to be sorted, it can be sorted without adverse
         # effects
         clock.events.sort()
-        if 0 <= pos < len(self.clock.events) - 1:
+        if 0 <= pos < len(self.clock.events):
             event = clock.events[pos]
             size = len('{0:.3f}'.format(clock.events[-1].time))
             text = '{0:{1}.3f} {2}'.format(
@@ -153,6 +172,17 @@ class TimeColumn(urwid.Frame):
 
     def speed_normal(self):
         self.clock_speed = 1
+        self.update_clock_speed()
+
+    def nudge_clock(self, amount):
+        self.clock.speed = self.clock_speed
+        self.clock.advance(amount)
+        self.update_clock_speed()
+
+    def next_action(self):
+        self.clock.speed = 1
+        difference = self.clock.events[0].time - self.clock.time
+        self.clock.advance(difference + 0.00001)
         self.update_clock_speed()
 
     def update_clock_speed(self):
@@ -537,7 +567,7 @@ if __name__ == '__main__':
     clock.schedule(gillcup.Animation(rotating_layer, 'rotation', -180, time=10,
         timing='infinite'))
     def next_waypoint():
-        clock.schedule(next_waypoint, 1 / 2)
+        clock.schedule(next_waypoint, 1)
         clock.schedule(gillcup.Animation(rect,
             'position', r(), r(), time=5, easing='quadratic'))
         new_rect = make_random_rect(rotating_layer, -0.5)
@@ -557,8 +587,8 @@ if __name__ == '__main__':
         clock.schedule(next_masskill, 10)
         for c in rotating_layer.children[5:]:
             delete_random_rect()
+    next_waypoint()
     next_deletion()
     next_masskill()
-    next_waypoint()
 
     run(clock, layer, resizable=True)
