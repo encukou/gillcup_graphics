@@ -378,6 +378,8 @@ class GraphicsObject(object):
 
 class RelativeAnchor(Effect):
     """Put on an ``anchor`` property to make it respect relative_anchor"""
+    is_constant = True
+
     def __init__(self, obj):
         super(RelativeAnchor, self).__init__()
         self.object = obj

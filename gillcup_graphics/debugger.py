@@ -11,28 +11,27 @@ import collections
 
 import gillcup_graphics
 import gillcup
+import gillcup.effect
 
 palette = [
         (None, 'light gray', 'black'),
         ('name', 'white', 'black'),
         ('selected', 'light gray', 'dark blue'),
         ('name selected', 'white', 'dark blue'),
+        ('grayed', 'dark gray', 'black'),
+        ('grayed selected', 'dark gray', 'dark blue'),
     ]
 
-class SelectMapping(object):
-    def __contains__(self, item):
-        return True
-
-    def __getitem__(self, item):
-        if item:
-            if item.endswith('selected'):
-                return item
-            return '%s selected' % item
-        else:
-            return 'selected'
+def select_mapping(item):
+    if item:
+        if item.endswith('selected'):
+            return item
+        return '%s selected' % item
+    else:
+        return 'selected'
 
 
-select_mapping = SelectMapping()
+select_mapping = dict((i[0], select_mapping(i[0])) for i in palette)
 
 
 class Main(urwid.Frame):
@@ -204,7 +203,8 @@ class TreeWidget(object):
                     char = '▸'
             else:
                 char = '·'
-            overlay = urwid.CompositeCanvas(urwid.SolidCanvas(char, 1, 1))
+            overlay = urwid.Text(('grayed', char)).render((1,))
+            overlay = urwid.CompositeCanvas(overlay)
             canvas.overlay(overlay, indent - self.indent_size, 0)
         if focus:
             canvas.fill_attr_apply(select_mapping)
@@ -335,10 +335,11 @@ class SceneGraphWalker(TreeWalker):
 
 class GraphicsObjectWalker(TreeWalker):
     def __init__(self, obj):
-        self.list = (
-                ChildrenWalker(obj),
-                PropertiesWalker(obj),
-            )
+        self.list = [PropertiesWalker(obj)]
+        if obj.children != ():
+            self.list.append(ChildrenWalker(obj))
+        else:
+            self.expanded = False
         super(GraphicsObjectWalker, self).__init__(obj)
 
     @property
@@ -359,7 +360,10 @@ class ChildrenWalker(TreeWalker):
 
     @property
     def widget(self):
-        return urwid.Text('children (%s)' % len(self.obj.children))
+        widget = urwid.Text('children (%s)' % len(self.obj.children))
+        if not self.obj.children:
+            widget = urwid.AttrWrap(widget, 'grayed')
+        return widget
 
     def make_child(self, item):
         return GraphicsObjectWalker(item)
@@ -368,6 +372,8 @@ class ChildrenWalker(TreeWalker):
 class PropertiesWalker(TreeWalker):
     cache_class = dict
     names_cache = dict()
+
+    expanded = False
 
     @property
     def list(self):
@@ -403,20 +409,60 @@ class PropertiesWalker(TreeWalker):
 
     @property
     def widget(self):
-        return urwid.Text('properties')
+        return urwid.AttrWrap(urwid.Text('properties'),  'grayed')
 
     def make_child(self, item):
         return PropertyWalker(self.obj, item)
 
 
 class PropertyWalker(TreeWalker):
+    expanded = False
+
     def __init__(self, obj, name):
         super(PropertyWalker, self).__init__(obj)
         self.name = name
+        self.prop = getattr(type(obj), name)
+
+    @property
+    def list(self):
+        effects = []
+        effect = self.prop.get_effect(self.obj)
+        while effect:
+            effects.append(effect)
+            try:
+                effect = effect.parent
+            except AttributeError:
+                effect = None
+        return effects
 
     @property
     def widget(self):
-        return urwid.Text([self.name, ' ', str(getattr(self.obj, self.name))])
+        value = getattr(self.obj, self.name)
+        widget = urwid.Text([self.name, ' ', str(value)])
+        effect = self.prop.get_effect(self.obj)
+        try:
+            is_constant = effect.is_constant
+        except AttributeError:
+            is_constant = False
+        if is_constant:
+            widget = urwid.AttrWrap(widget, 'grayed')
+        return widget
+
+    def make_child(self, item):
+        return EffectWalker(item)
+
+
+class EffectWalker(PropertiesWalker):
+    @property
+    def widget(self):
+        obj = self.obj
+        name = getattr(obj, 'name', None)
+        if name:
+            name_part = name + ' '
+        else:
+            name_part = ''
+        text = [('name', name_part), '({0})'.format(type(obj).__name__)]
+        return urwid.Text(text, wrap='clip')
 
 
 class SceneColumn(urwid.Frame):
@@ -448,7 +494,7 @@ if __name__ == '__main__':
             size=(r() * 0.1, r() * 0.1), rotation=r() * 360,
             position=(r() + d, r() + d), color=(r(), r(), r()))
         clock.schedule(gillcup.Animation(rect, 'rotation', r() * 180 - 90,
-            time=1, timing='infinite'))
+            time=1, timing='infinite', dynamic=True))
         return rect
     for i in range(10):
         make_random_rect()
