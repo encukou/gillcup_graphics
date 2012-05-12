@@ -5,9 +5,11 @@ from __future__ import division, unicode_literals
 
 import urwid
 import pyglet
+import fractions
+import weakref
+
 import gillcup_graphics
 import gillcup
-import fractions
 
 palette = {}
 
@@ -19,8 +21,10 @@ class Main(urwid.Frame):
         self.layer = layer
         self.clock = clock
         self.clock_column = TimeColumn(clock)
+        self.scene_column = SceneColumn(clock, [layer])
         self.columns = urwid.Columns([
                 self.clock_column,
+                self.scene_column,
             ], 1)
         super(Main, self).__init__(self.columns)
 
@@ -59,16 +63,18 @@ class EventListWalker(urwid.ListWalker):
         clock.schedule_update_function(self._modified)
 
     def get_at(self, pos):
+        # An undocumented Clock detail is that events are a heapq: although
+        # not guaranteed to be sorted, it can be sorted without adverse
+        # effects
         clock.events.sort()
-        if pos < 0:
-            return urwid.Text(''), -1
-        if pos > len(self.clock.events) - 1:
-            return urwid.Text(''), len(self.clock.events)
-        event = clock.events[pos]
-        size = len('{0:.3f}'.format(clock.events[-1].time))
-        text = '{0:{1}.3f} {2}'.format(
-            event.time, size, event.action)
-        return urwid.Text(text), pos
+        if 0 <= pos < len(self.clock.events) - 1:
+            event = clock.events[pos]
+            size = len('{0:.3f}'.format(clock.events[-1].time))
+            text = '{0:{1}.3f} {2}'.format(
+                event.time, size, event.action)
+            return urwid.Text(text, wrap='clip'), pos
+        else:
+            return None, None
 
     def get_focus(self):
         return self.get_at(self.position)
@@ -106,8 +112,8 @@ class TimeColumn(urwid.Frame):
             speed_str += '×{}'.format(self.clock_speed.numerator)
         if self.clock_speed.denominator != 1:
             speed_str += '÷{}'.format(self.clock_speed.denominator)
-        self.clock_header.set_text('{0:.3f}\n{1}'.format(
-            self.clock.time, speed_str))
+        self.clock_header.set_text('{0:.3f} ({1:.1f} fps)\n{2}'.format(
+            self.clock.time, pyglet.clock.get_fps(), speed_str))
         self._invalidate()
 
     def toggle_pause(self):
@@ -134,6 +140,143 @@ class TimeColumn(urwid.Frame):
         self._set_text()
 
 
+class TreeWalker(urwid.ListWalker):
+    def __init__(self):
+        super(TreeWalker, self).__init__()
+        self.position = []
+
+    def get_item(self, position):
+        if position:
+            return self[position[0]].get_item(position[1:])
+        else:
+            return self
+
+    def get_at(self, position):
+        if position is None:
+            return None, None
+        else:
+            item = self.get_item(position)
+            return item.widget, position
+
+    def get_focus(self):
+        return self.get_at(self.position)
+
+    def next_position(self, position):
+        if position:
+            index = position[0]
+            pos = self[index].next_position(position[1:])
+            if pos is not None:
+                return [index] + pos
+            elif index + 1 < len(self):
+                return [index + 1]
+            else:
+                return None
+        elif len(self):
+            return [0]
+        else:
+            return None
+
+    def prev_position(self, position):
+        if position:
+            index = position[0]
+            pos = self[index].prev_position(position[1:])
+            if pos is not None:
+                return [index] + pos
+            elif index > 0:
+                return [index - 1] + self[index - 1].last_position()
+            else:
+                return []
+        else:
+            return None
+
+    def last_position(self):
+        if len(self):
+            last = len(self) - 1
+            return [last] + self[last].last_position()
+        else:
+            return []
+
+    def get_next(self, position):
+        return self.get_at(self.next_position(position))
+
+    def get_prev(self, position):
+        return self.get_at(self.prev_position(position))
+
+    def set_focus(self, position):
+        self.position = position
+        self._modified()
+
+    def __len__(self):
+        try:
+            return super(TreeWalker, self).__len__()
+        except TypeError:
+            return 0
+
+
+class SceneGraphWalker(TreeWalker):
+    def __init__(self, clock, layers):
+        super(SceneGraphWalker, self).__init__()
+        self.layers = layers
+        self._modified = self._modified
+        clock.schedule_update_function(self._modified)
+        self.cache = weakref.WeakKeyDictionary()
+
+    @property
+    def widget(self):
+        return urwid.Text('Layers', wrap='clip')
+
+    def __len__(self):
+        return len(self.layers)
+
+    def __getitem__(self, pos):
+        item = self.layers[pos]
+        try:
+            return self.cache[item]
+        except KeyError:
+            rv = self.cache[item] = GraphicsObjectWalker(item)
+            return rv
+
+
+class GraphicsObjectWalker(TreeWalker):
+    def __init__(self, obj):
+        super(GraphicsObjectWalker, self).__init__()
+        self.obj = obj
+        self.cache = weakref.WeakKeyDictionary()
+
+    @property
+    def widget(self):
+        obj = self.obj
+        if obj.name:
+            name_part = obj.name + ' '
+        else:
+            name_part = ''
+        text = [name_part, '({0})'.format(type(obj).__name__)]
+        return urwid.Text(text, wrap='clip')
+
+    def __len__(self):
+        return len(self.obj.children)
+
+    def __getitem__(self, pos):
+        item = self.obj.children[pos]
+        try:
+            return self.cache[item]
+        except KeyError:
+            rv = self.cache[item] = GraphicsObjectWalker(item)
+            return rv
+
+
+class SceneColumn(urwid.Frame):
+    def __init__(self, clock, layers):
+        self.layers = layers
+        self.clock = clock
+        self.event_view = urwid.ListBox(SceneGraphWalker(clock, layers))
+        self.clock_header = urwid.Text('')
+        super(SceneColumn, self).__init__(self.event_view,
+            header=self.clock_header)
+        self._invalidate = self._invalidate
+        clock.schedule_update_function(self._invalidate)
+
+
 def run(clock, layer, *args, **kwargs):
     main = Main(clock, layer)
     loop = urwid.MainLoop(main, palette)
@@ -142,16 +285,24 @@ def run(clock, layer, *args, **kwargs):
     loop.run()
 
 if __name__ == '__main__':
-    layer = gillcup_graphics.Layer()
+    import random
+    layer = gillcup_graphics.Layer(name='Base')
+    clock = gillcup_graphics.RealtimeClock()
+    for i in range(10):
+        r = random.random
+        rect = gillcup_graphics.Rectangle(layer, relative_anchor=(0.5, 0.5),
+            size=(r() * 0.1, r() * 0.1), rotation=r() * 360,
+            position=(r(), r()), color=(r(), r(), r()))
+        clock.schedule(gillcup.Animation(rect, 'rotation', 180,
+            time=r() * 10 + 1, timing='infinite'))
     rect = gillcup_graphics.Rectangle(layer, relative_anchor=(0.5, 0.5),
         position=(0.5, 0.5), size=(0.5, 0.5))
-    clock = gillcup_graphics.RealtimeClock()
     clock.schedule(gillcup.Animation(rect, 'rotation', 180, time=10,
         timing='infinite'))
-    import random
-    for i in xrange(1000):
+    def schedule_next_waypoint():
         clock.schedule(gillcup.Animation(rect, 'position',
-            random.random(), random.random(), time=5, easing='quadratic'),
-            dt=i/3)
+            random.random(), random.random(), time=5, easing='quadratic'))
+        clock.schedule(schedule_next_waypoint, 1)
+    schedule_next_waypoint()
 
     run(clock, layer, resizable=True)
