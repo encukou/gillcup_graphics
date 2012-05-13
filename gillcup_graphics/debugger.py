@@ -69,7 +69,7 @@ class Main(urwid.Frame):
             window.dispatch_event('on_draw')
             window.flip()
 
-        loop.set_alarm_in(1 / 30, self.tick, None)
+        loop.set_alarm_in(1 / 100, self.tick, None)
 
     def keypress(self, size, key):
         """Global keypress handler"""
@@ -193,7 +193,7 @@ class TimeColumn(urwid.Frame):
         self._set_text()
 
 
-class TreeWidget(object):
+class TreeWidget(urwid.FlowWidget):
     cache = collections.defaultdict(weakref.WeakKeyDictionary)
 
     indent_size = 2
@@ -247,9 +247,11 @@ class TreeWidget(object):
                     return 'down'
             else:
                 self.item.expanded = True
+            self._invalidate()
         elif key == 'left':
             if self.item.expanded:
                 self.item.expanded = False
+            self._invalidate()
         else:
             return key
 
@@ -568,8 +570,7 @@ if __name__ == '__main__':
         timing='infinite'))
     def next_waypoint():
         clock.schedule(next_waypoint, 1)
-        clock.schedule(gillcup.Animation(rect,
-            'position', r(), r(), time=5, easing='quadratic'))
+        clock.schedule(gillcup.Animation(rect, 'position', r(), r(), time=5))
         new_rect = make_random_rect(rotating_layer, -0.5)
         new_rect.opacity = 0
         clock.schedule(gillcup.Animation(new_rect, 'opacity', 1, time=1))
@@ -578,7 +579,7 @@ if __name__ == '__main__':
         if not rotating_layer.children:
             return
         victim = random.choice(rotating_layer.children)
-        clock.schedule(gillcup.Animation(victim, 'opacity', 0, time=1 + r()) +
+        clock.schedule(gillcup.Animation(victim, 'size', 0, time=1 + r()) +
             victim.die)
     def next_deletion():
         clock.schedule(next_deletion, 1 + r())
