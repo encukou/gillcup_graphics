@@ -508,6 +508,13 @@ class GraphicsObjectWalker(TreeWalker):
         return widget
 
 
+class NonCachedText(urwid.Text):
+    def render(self, size, focus=False):
+        rv = super(NonCachedText, self).render(size, focus)
+        self._invalidate()
+        return rv
+
+
 class ChildrenWalker(TreeWalker):
     @property
     def list(self):
@@ -515,7 +522,8 @@ class ChildrenWalker(TreeWalker):
 
     @property
     def widget(self):
-        widget = urwid.Text('children (%s)' % len(self.obj.children))
+        widget = NonCachedText('children (%s)' % len(self.obj.children))
+        widget.no_cache = ['render']
         if not self.obj.children:
             widget = urwid.AttrWrap(widget, 'grayed')
         return widget
