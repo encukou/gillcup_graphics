@@ -17,6 +17,7 @@ import pyglet
 import fractions
 import weakref
 import collections
+import time
 
 import gillcup_graphics
 import gillcup
@@ -44,6 +45,23 @@ def select_mapping(item):
 select_mapping = dict((i[0], select_mapping(i[0])) for i in palette)
 
 
+original_do_draw = gillcup_graphics.GraphicsObject.do_draw
+def monkeypatched_do_draw(self, *args, **kwargs):
+    start = time.time()
+    retval = original_do_draw(self, *args, **kwargs)
+    elapsed = time.time() - start
+    try:
+        original = self._debugger_render_time
+    except AttributeError:
+        self._debugger_render_time = elapsed
+    else:
+        # Smooth the value over several frames
+        # (exponential smoothing, about 30 frames half life)
+        self._debugger_render_time = (original * 49 + elapsed) / 50
+    return retval
+gillcup_graphics.GraphicsObject.do_draw = monkeypatched_do_draw
+
+
 class Main(urwid.Frame):
     """The main GG Debugger widget"""
     _selectable = True
@@ -61,6 +79,7 @@ class Main(urwid.Frame):
 
     def tick(self, loop, _data):
         """Manual tick for the Pyglet main loop"""
+        loop.set_alarm_in(1 / 60, self.tick, None)
         pyglet.clock.tick()
 
         for window in pyglet.app.windows:
@@ -68,8 +87,6 @@ class Main(urwid.Frame):
             window.dispatch_events()
             window.dispatch_event('on_draw')
             window.flip()
-
-        loop.set_alarm_in(1 / 100, self.tick, None)
 
     def keypress(self, size, key):
         """Global keypress handler"""
@@ -395,6 +412,69 @@ class SceneGraphWalker(TreeWalker):
         return GraphicsObjectWalker(item)
 
 
+class GraphiscObjectWidget(urwid.FlowWidget):
+    no_cache = ['render']
+
+    def __init__(self, obj):
+        super(GraphiscObjectWidget, self).__init__()
+        self.obj = obj
+
+    def parts(self):
+        obj = self.obj
+        name_part = obj.name or ''
+        render_time = getattr(obj, '_debugger_render_time', None)
+        type_part = '({0})'.format(type(obj).__name__)
+        if render_time is None:
+            time_part = ''
+        else:
+            time_part = '{0:.1f}ms'.format(render_time * 1000)
+        return [
+                ('', '<', name_part),
+                (' ' if name_part else '', '<', type_part),
+                (' ', '>', time_part),
+            ]
+
+    def _get_rows(self, size):
+        [cols] = size
+        row_parts = []
+        col = 0
+        rows = [row_parts]
+        for sep, adjust, part in self.parts():
+            col += len(part) + len(sep)
+            if row_parts and col > cols:
+                row_parts = []
+                rows.append(row_parts)
+                col = len(part)
+            else:
+                if sep:
+                    row_parts.append(sep)
+            if adjust == '>':
+                row_parts.append(None)
+            if part:
+                row_parts.append(part)
+        for row in rows:
+            fill_count = row.count(None)
+            text_length = sum(len(t) for t in row if t)
+            total_fill_len = cols - text_length
+            if fill_count:
+                for i, part in enumerate(row):
+                    if part is None:
+                        row[i] = ' ' * int(total_fill_len / fill_count)
+            else:
+                row.append(' ' * total_fill_len)
+        return rows
+
+    def rows(self, size, focus=False):
+        return len(self._get_rows(size))
+
+    def render(self, size, focus=False):
+        [cols] = size
+        rows = self._get_rows(size)
+        encoded_rows = [''.join(row).encode('utf-8').ljust(cols)[:cols] for
+            row in rows]
+        return urwid.TextCanvas(encoded_rows)
+
+
 class GraphicsObjectWalker(TreeWalker):
     def __init__(self, obj):
         self.list = [PropertiesWalker(obj)]
@@ -406,13 +486,26 @@ class GraphicsObjectWalker(TreeWalker):
 
     @property
     def widget(self):
+        return GraphiscObjectWidget(self.obj)
         obj = self.obj
         if obj.name:
             name_part = obj.name + ' '
         else:
             name_part = ''
-        text = [('name', name_part), '({0})'.format(type(obj).__name__)]
-        return urwid.Text(text, wrap='clip')
+        time = getattr(obj, '_debugger_time', None)
+        if time is None:
+            time_part = ''
+        else:
+            time_part = ' ({0:.1f}ms)'.format(time * 1000)
+        text = [('name', name_part), '({0})'.format(type(obj).__name__),
+            time_part]
+        widget = urwid.Text(text, wrap='clip')
+        def render(*args, **kwargs):
+            rv = urwid.Text.render(widget, *args, **kwargs)
+            widget._invalidate()
+            return rv
+        widget.render = render
+        return widget
 
 
 class ChildrenWalker(TreeWalker):
