@@ -18,22 +18,51 @@ import fractions
 import weakref
 import collections
 import time
+import itertools
+import math
 from urwid.util import decompose_tagmarkup
 
 import gillcup_graphics
 import gillcup
 import gillcup.effect
 
-palette = [
-        (None, 'light gray', 'black'),
-        ('name', 'white', 'black'),
-        ('selected', 'light gray', 'dark blue'),
-        ('name selected', 'white', 'dark blue'),
-        ('grayed', 'dark gray', 'black'),
-        ('grayed selected', 'dark gray', 'dark blue'),
-    ]
 
-def select_mapping(item):
+GRAYS = [0, 3, 7, 11, 15, 19, 23, 27, 31, 35, 38, 42, 46, 50, 52, 58, 62,
+    66, 70, 74, 78, 82, 85, 89, 93, 100]
+COLORS = '068adf'
+
+def make_palette():
+    """Create an urwid palette for the TUI"""
+    fg = 'light gray'
+    bg = 'black'
+    sel_bg = 'dark blue'
+
+    palette = [
+            (None, fg, bg),
+            ('selected', fg, sel_bg),
+            ('name', 'white', bg),
+            ('name selected', 'white', sel_bg),
+            ('grayed', 'dark gray', bg),
+            ('grayed selected', 'dark gray', sel_bg),
+            ('warning', 'light red,bold', bg, 'bold'),
+            ('warning selected', 'light red,bold', sel_bg, 'bold'),
+        ]
+    for gray in GRAYS:
+        palette.append(('g%s' % gray, fg, bg, '', 'g%s' % gray, bg))
+        palette.append(
+            ('g%s selected' % gray, fg, sel_bg, '', 'g%s' % gray, sel_bg))
+
+    for rgb in itertools.product(COLORS, repeat=3):
+        colorname = ''.join(rgb)
+        palette.append(('rgb-' + colorname, fg, bg, '', '#' + colorname, bg))
+        palette.append(('rgb-%s selected' % colorname,
+            fg, sel_bg, '', '#' + colorname, sel_bg))
+
+    return palette
+
+default_palette = make_palette()
+
+def make_select_mapping(item):
     """Mapping for fill_attr_apply to get the "selected" palette entries"""
     if item:
         if item.endswith('selected'):
@@ -43,7 +72,8 @@ def select_mapping(item):
         return 'selected'
 
 
-select_mapping = dict((i[0], select_mapping(i[0])) for i in palette)
+select_mapping = dict((i[0], make_select_mapping(i[0]))
+    for i in default_palette)
 
 
 original_do_draw = gillcup_graphics.GraphicsObject.do_draw
@@ -89,6 +119,7 @@ class Main(urwid.Frame):
             window.dispatch_events()
             window.dispatch_event('on_draw')
             window.flip()
+
 
     def keypress(self, size, key):
         """Global keypress handler"""
@@ -555,12 +586,21 @@ class GraphiscObjectWidget(urwid.FlowWidget):
             time_part = ''
         else:
             time_part = '{0:.1f}ms'.format(render_time * 1000)
-            if render_time < 0.0003:
-                time_attr = 'grayed'
-            elif render_time > 0.005:
-                time_attr = 'warning'
-            elif render_time > 0.001:
-                time_attr = 'name'
+            if render_time < 0.005:
+                index = render_time / 0.005 * 2 / 3 + 1 / 3
+                sz = len(GRAYS)
+                time_attr = 'g%s' % GRAYS[int(sz * index)]
+            elif render_time < 0.01:
+                index = (render_time - 0.005) / 0.005
+                sz = len(COLORS)
+                time_attr = 'rgb-ff%s' % COLORS[-int(sz * index) - 1]
+            else:
+                sz = len(COLORS)
+                index = math.log(render_time) - math.log(0.01)
+                if index >= 1:
+                    time_attr = 'warning'
+                else:
+                    time_attr = 'rgb-f%s0' % COLORS[-int(sz * index) - 1]
         return [
                 ('', '<', 'name', name_part),
                 (' ' if name_part else '', '<', None, type_part),
@@ -790,7 +830,8 @@ def run(clock, layer, *args, **kwargs):
     The `args` and `kwargs` get passed to gillcup_graphics.Window
     """
     main = Main(clock, layer)
-    loop = urwid.MainLoop(main, palette=palette)
+    loop = urwid.MainLoop(main, palette=default_palette)
+    loop.screen.set_terminal_properties(colors=256)
     loop.set_alarm_in(1 / 30, main.tick, None)
     gillcup_graphics.Window(layer, *args, **kwargs)
     loop.run()
