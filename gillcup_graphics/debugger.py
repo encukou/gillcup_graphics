@@ -18,6 +18,7 @@ import fractions
 import weakref
 import collections
 import time
+from urwid.util import decompose_tagmarkup
 
 import gillcup_graphics
 import gillcup
@@ -261,6 +262,8 @@ class TreeWidget(urwid.FlowWidget):
         """Render the widget into a Canvas"""
         [cols] = size
         indent = self.indent
+        if indent >= cols:
+            return urwid.SolidCanvas(' ', cols, self.rows(size, focus))
         orig_canvas = self.item.widget.render((cols - indent, ), focus)
         canvas = urwid.CompositeCanvas(orig_canvas)
         canvas.pad_trim_left_right(indent, 0)
@@ -540,20 +543,28 @@ class GraphiscObjectWidget(urwid.FlowWidget):
             - separator: text to put before the element if a line dowsn't begin
                 with it
             - justification mark; '<' to aligh right, '>' to align left
+            - attribute: attribute for the text, or None
             - the text itself
         """
         obj = self.obj
         name_part = obj.name or ''
         render_time = getattr(obj, 'debugger__render_time', None)
         type_part = '({0})'.format(type(obj).__name__)
+        time_attr = None
         if render_time is None:
             time_part = ''
         else:
             time_part = '{0:.1f}ms'.format(render_time * 1000)
+            if render_time < 0.0003:
+                time_attr = 'grayed'
+            elif render_time > 0.005:
+                time_attr = 'warning'
+            elif render_time > 0.001:
+                time_attr = 'name'
         return [
-                ('', '<', name_part),
-                (' ' if name_part else '', '<', type_part),
-                (' ', '>', time_part),
+                ('', '<', 'name', name_part),
+                (' ' if name_part else '', '<', None, type_part),
+                (' ', '>', time_attr, time_part),
             ]
 
     def _get_rows(self, size):
@@ -561,28 +572,33 @@ class GraphiscObjectWidget(urwid.FlowWidget):
         row_parts = []
         col = 0
         rows = [row_parts]
-        for sep, just, part in self.parts():
-            col += len(part) + len(sep)
+        for sep, just, attr, text in self.parts():
+            col += len(text) + len(sep)
             if row_parts and col > cols:
                 row_parts = []
                 rows.append(row_parts)
-                col = len(part)
+                col = len(text)
             else:
                 if sep:
-                    row_parts.append(sep)
+                    row_parts.append((None, sep))
             if just == '>':
-                row_parts.append(None)
-            if part:
-                row_parts.append(part)
+                row_parts.append((None, None))
+            if text:
+                row_parts.append((attr, text))
         for row in rows:
-            fill_count = row.count(None)
-            text_length = sum(len(t) for t in row if t)
+            fill_count = sum(1 for attr, text in row if text is None)
+            text_length = sum(len(text) for attr, text in row if text)
             total_fill_len = cols - text_length
-            if fill_count:
-                for i, part in enumerate(row):
-                    if part is None:
-                        row[i] = ' ' * int(total_fill_len / fill_count)
-            else:
+            col = 0
+            for i, (attr, text) in enumerate(row):
+                if text is None:
+                    text = ' ' * int(total_fill_len / fill_count)
+                    row[i] = (None, text)
+                if col + len(text) > cols:
+                    text = text[:max(0, cols - col)]
+                    row[i] = (attr, text)
+                col += len(text)
+            if not fill_count:
                 row.append(' ' * total_fill_len)
         return rows
 
@@ -594,10 +610,13 @@ class GraphiscObjectWidget(urwid.FlowWidget):
     def render(self, size, focus=False):
         """Return a canvas with the widget's contents"""
         [cols] = size
-        rows = self._get_rows(size)
-        encoded_rows = [''.join(row).encode('utf-8').ljust(cols)[:cols] for
-            row in rows]
-        return urwid.TextCanvas(encoded_rows)
+        texts = []
+        attrs = []
+        for row in self._get_rows(size):
+            text, attr = decompose_tagmarkup(row)
+            texts.append(text.encode('utf-8').ljust(cols)[:cols])
+            attrs.append(attr)
+        return urwid.TextCanvas(text=texts, attr=attrs)
 
 
 class GraphicsObjectWalker(TreeWalker):
