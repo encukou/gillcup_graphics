@@ -246,10 +246,11 @@ class TimeColumn(urwid.Frame):
 
     def next_action(self):
         """Advance clock to after the nextscheduled action"""
-        self.clock.speed = 1
-        difference = self.clock.events[0].time - self.clock.time
-        self.clock.advance(difference + 0.00001)
-        self.update_clock_speed()
+        if self.clock.events:
+            self.clock.speed = 1
+            difference = self.clock.events[0].time - self.clock.time
+            self.clock.advance(difference + 0.00001)
+            self.update_clock_speed()
 
     def update_clock_speed(self):
         """Update the clock's speed to reflect our settings"""
