@@ -88,8 +88,7 @@ def monkeypatched_do_draw(self, *args, **kwargs):
         self.debugger__render_time = elapsed
     else:
         # Smooth the value over several frames
-        # (exponential smoothing, about 30 frames half life)
-        self.debugger__render_time = (original * 49 + elapsed) / 50
+        self.debugger__render_time = (original * 9 + elapsed) / 10
     return retval
 gillcup_graphics.GraphicsObject.do_draw = monkeypatched_do_draw
 
