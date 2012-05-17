@@ -784,7 +784,7 @@ class PropertyWalker(TreeWalker):
     @property
     def widget(self):
         value = getattr(self.obj, self.name)
-        widget = urwid.Text([self.name, ' ', str(value)])
+        widget = NonCachedText([self.name, ' ', str(value)])
         effect = self.prop.get_effect(self.obj)
         try:
             is_constant = effect.is_constant
