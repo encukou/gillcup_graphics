@@ -282,7 +282,7 @@ class Rectangle(GraphicsObject):
     color = red, green, blue = color_property
     opacity = opacity_property
 
-    vertices = (gl.GLfloat * 8)(0, 0, 1, 0, 1, 1, 0, 1)
+    vertices = (gl.GLfloat * 8)(0, 0, 1, 0, 0, 1, 1, 1)
 
     def draw(self, transformation, **kwargs):
         transformation.scale(self.width, self.height, 1)
@@ -290,7 +290,7 @@ class Rectangle(GraphicsObject):
         gl.glColor4fv((gl.GLfloat * 4)(*color))
         gl.glEnableClientState(gl.GL_VERTEX_ARRAY)
         gl.glVertexPointer(2, gl.GL_FLOAT, 0, self.vertices)
-        gl.glDrawArrays(gl.GL_QUADS, 0, 4)
+        gl.glDrawArrays(gl.GL_TRIANGLE_STRIP, 0, 4)
 
 
 class Sprite(GraphicsObject):
