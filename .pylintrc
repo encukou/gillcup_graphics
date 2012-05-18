@@ -46,8 +46,9 @@ load-plugins=
 # R0201: Method could be a function -- so?
 # W0142: Used * or ** magic
 # W0703: Catching too general exception
+# E0202: An attribute hides this method -- interferes w/ @prperty
 
-disable=C0103,E0611,I0011,W0603,R0201,W0142,W0703
+disable=C0103,E0611,I0011,W0603,R0201,W0142,W0703,E0202
 
 
 [REPORTS]

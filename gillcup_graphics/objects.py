@@ -1,3 +1,4 @@
+# Encoding: UTF-8
 """Drawable objects
 
 This module provides basic objects you can draw and animate.
@@ -21,11 +22,12 @@ Refer to Pyglet documentation for details.
     aren't terribly useful here.
 """
 
-from __future__ import division
+from __future__ import division, unicode_literals
 
 import sys
 import pyglet
 from pyglet import gl
+import re
 
 import gillcup
 from gillcup import properties
@@ -322,6 +324,19 @@ class Sprite(GraphicsObject):
         self.sprite.draw()
 
 
+def sanitize_text(string):
+    """Sanitize a string for use in a name"""
+    def _sanitize_char(match):
+        group = match.group()
+        if group == '\n':
+            return r'↵'
+        elif group == '\x7f':
+            return '\N{SYMBOL FOR DELETE}'
+        else:
+            return unichr(0x2400 + ord(match.group()))
+    return re.sub(r'[\0-\x1f]', _sanitize_char, string)
+
+
 class Text(GraphicsObject):
     """A text label
 
@@ -366,6 +381,19 @@ class Text(GraphicsObject):
         self.label.text = self.text[:int(self.characters_displayed)]
         self.label.draw()
         self.label.text = self.text
+
+    @property
+    def name(self):
+        """If name is not given explicitly, use the text itself"""
+        if self._name is None:
+            return '"{0}"'.format(sanitize_text(self.text))
+        else:
+            return self._name
+
+    @name.setter
+    def name(self, new_name):
+        """Set the name"""
+        self._name = new_name  # pylint: disable=W0201
 
     @property
     def size(self):
