@@ -20,7 +20,6 @@ import collections
 import time
 import itertools
 import math
-from urwid.util import decompose_tagmarkup
 
 import gillcup_graphics
 import gillcup
@@ -558,13 +557,22 @@ class SceneGraphWalker(TreeWalker):
         return GraphicsObjectWalker(item)
 
 
-class GraphiscObjectWidget(urwid.FlowWidget):
+class NonCachedText(urwid.Text):
+    """Like urwid.Text, but doesn't cache its canvas"""
+    def render(self, size, focus=False):
+        rv = super(NonCachedText, self).render(size, focus)
+        self._invalidate()
+        return rv
+
+
+class GraphicsObjectWidget(NonCachedText):
     """Widget that displays data for a GraphicsObject"""
     no_cache = ['render']
 
     def __init__(self, obj):
-        super(GraphiscObjectWidget, self).__init__()
+        super(GraphicsObjectWidget, self).__init__('')
         self.obj = obj
+        self._row_cache = [None] * 2
 
     def parts(self):
         """Return a list of parts that make up the info in this widget
@@ -607,15 +615,21 @@ class GraphiscObjectWidget(urwid.FlowWidget):
                 (' ', '>', time_attr, time_part),
             ]
 
-    def _get_rows(self, size):
+    def update_text(self, size):
+        """Update this widget's text to match its widget"""
+        parts = self.parts()
+        cache_key = size, parts
+        if cache_key == self._row_cache[0]:
+            self.set_text(self._row_cache[1])
+            return
         [cols] = size
         row_parts = []
         col = 0
         rows = [row_parts]
-        for sep, just, attr, text in self.parts():
+        for sep, just, attr, text in parts:
             col += len(text) + len(sep)
             if row_parts and col > cols:
-                row_parts = []
+                row_parts = [(None, '\n')]
                 rows.append(row_parts)
                 col = len(text)
             else:
@@ -640,23 +654,20 @@ class GraphiscObjectWidget(urwid.FlowWidget):
                 col += len(text)
             if not fill_count:
                 row.append(' ' * total_fill_len)
-        return rows
+        self._row_cache = cache_key, rows
+        self.set_text(rows)
 
     def rows(self, size, focus=False):
         """Return number of rows the widget takes up with the given no. of cols
         """
-        return len(self._get_rows(size))
+        self.update_text(size)
+        return super(GraphicsObjectWidget, self).rows(size, focus)
 
     def render(self, size, focus=False):
-        """Return a canvas with the widget's contents"""
-        [cols] = size
-        texts = []
-        attrs = []
-        for row in self._get_rows(size):
-            text, attr = decompose_tagmarkup(row)
-            texts.append(text.encode('utf-8').ljust(cols)[:cols])
-            attrs.append(attr)
-        return urwid.TextCanvas(text=texts, attr=attrs)
+        """Return number of rows the widget takes up with the given no. of cols
+        """
+        self.update_text(size)
+        return super(GraphicsObjectWidget, self).render(size, focus)
 
 
 class GraphicsObjectWalker(TreeWalker):
@@ -677,15 +688,7 @@ class GraphicsObjectWalker(TreeWalker):
 
     @property
     def widget(self):
-        return GraphiscObjectWidget(self.obj)
-
-
-class NonCachedText(urwid.Text):
-    """Like urwid.Text, but doesn't cache its canvas"""
-    def render(self, size, focus=False):
-        rv = super(NonCachedText, self).render(size, focus)
-        self._invalidate()
-        return rv
+        return GraphicsObjectWidget(self.obj)
 
 
 class ChildrenWalker(TreeWalker):
