@@ -630,6 +630,8 @@ class Text(GraphicsObject):
 
         The API regarding font size is experimental.
     """
+    interesting_attribute_names = ['size']
+
     def __init__(self, parent, text, font_name=None, **kwargs):
         super(Text, self).__init__(parent, **kwargs)
         self.text = text

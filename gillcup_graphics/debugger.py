@@ -751,6 +751,7 @@ class PropertiesWalker(TreeWalker):
                 else:
                     subprops.update(subproperties)
         names = sorted(v for k, v in props.iteritems() if k not in subprops)
+        names += getattr(self.obj, 'interesting_attribute_names', [])
         self.names_cache[cls] = names, all_names
         return names
 
@@ -770,29 +771,39 @@ class PropertyWalker(TreeWalker):
         super(PropertyWalker, self).__init__(obj)
         self.name = name
         self.prop = getattr(type(obj), name)
+        try:
+            self.get_effect = self.prop.get_effect
+        except AttributeError:
+            self.get_effect = None
 
     @property
     def list(self):
         """List effects on this property, traversing the "parent" chain"""
         effects = []
-        effect = self.prop.get_effect(self.obj)
-        while effect:
-            effects.append(effect)
-            try:
-                effect = effect.parent
-            except AttributeError:
-                effect = None
-        return effects
+        if self.get_effect:
+            effect = self.get_effect(self.obj)
+            while effect:
+                effects.append(effect)
+                try:
+                    effect = effect.parent
+                except AttributeError:
+                    effect = None
+            return effects
+        else:
+            return []
 
     @property
     def widget(self):
         value = getattr(self.obj, self.name)
         widget = NonCachedText([self.name, ' ', str(value)])
-        effect = self.prop.get_effect(self.obj)
-        try:
-            is_constant = effect.is_constant
-        except AttributeError:
-            is_constant = False
+        if self.get_effect:
+            effect = self.get_effect(self.obj)
+            try:
+                is_constant = effect.is_constant
+            except AttributeError:
+                is_constant = False
+        else:
+            is_constant = True
         if is_constant:
             widget = urwid.AttrWrap(widget, 'grayed')
         return widget
