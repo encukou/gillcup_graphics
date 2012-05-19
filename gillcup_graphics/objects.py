@@ -417,11 +417,11 @@ class Text(GraphicsObject):
         """Natural height of the text
 
         See `size`"""
-        return self.size[0]
+        return self.size[1]
 
     @property
     def width(self):
         """Natural height of the text
 
         See `size`"""
-        return self.size[1]
+        return self.size[0]
