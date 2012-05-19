@@ -24,6 +24,7 @@ import math
 import gillcup_graphics
 import gillcup
 import gillcup.effect
+import gillcup.properties
 
 
 GRAYS = [0, 3, 7, 11, 15, 19, 23, 27, 31, 35, 38, 42, 46, 50, 52, 58, 62,
@@ -801,17 +802,32 @@ class PropertyWalker(TreeWalker):
 
 
 class EffectWalker(PropertiesWalker):
-    """TreeWaler for an effect"""
+    """TreeWalker for an effect"""
+    @property
+    def list(self):
+        obj = self.obj
+        element_effect = getattr(obj, 'element_effect', None)
+        if element_effect:
+            return [obj.element_effect]
+        else:
+            return []
+
     @property
     def widget(self):
         obj = self.obj
         name = getattr(obj, 'name', None)
         if name:
             name_part = name + ' '
+        elif hasattr(obj, 'index'):
+            name_part = '[{0}] '.format(obj.index)
         else:
             name_part = ''
-        text = [('name', name_part), '({0})'.format(type(obj).__name__)]
-        return urwid.Text(text, wrap='clip')
+        text = [('name', name_part), '({0})'.format(type(obj).__name__),
+            ' → ', unicode(obj.value)]
+        return NonCachedText(text, wrap='clip')
+
+    def wrap_child(self, item):
+        return EffectWalker(item)
 
 
 class SceneColumn(urwid.Frame):
