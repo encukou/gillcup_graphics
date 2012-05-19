@@ -182,13 +182,8 @@ class GraphicsObject(object):
         transformation.scale(*self.scale)
         transformation.translate(*(-x for x in self.anchor))
 
-    def do_hit_test(self, transformation, **kwargs):
-        """Perform a hit test on this object and any children"""
-        if self.hit_test(transformation=transformation, **kwargs):
-            yield self
-
-    def hit_test(self, **kwargs):
-        """Perform a hit test on this object only"""
+    def hit_test(self, x, y, z):
+        """Perform a hit test on this object"""
         return True
 
     def die(self):
@@ -222,6 +217,22 @@ class GraphicsObject(object):
             else:
                 new_parent.children.append(self)
             self.parent = new_parent
+
+    def do_pointer_event(self, type, pointer, transformation, x, y, **kwargs):
+        with transformation.state:
+            self.change_matrix(transformation)
+            transformed_point = transformation.transform_point(x, y)
+            if self.hit_test(*transformed_point):
+                local_x, local_y, local_z = transformed_point
+                return self.pointer_event(type, pointer,
+                    local_x, local_y, local_z, global_x=x, global_y=y,
+                    transformation=transformation, **kwargs)
+
+    def pointer_event(self, type, pointer, x, y, z, **kwargs):
+        pass
+
+    def do_keyboard_event(self, type, keyboard, **kwargs):
+        pass
 
 
 class RelativeAnchor(Effect):
@@ -277,6 +288,9 @@ class DecorationLayer(Layer):
     """
     def do_hit_test(self, transformation, **kwargs):
         return ()
+
+    def do_pointer_event(*_ignore, **_everything):
+        pass
 
 
 class Rectangle(GraphicsObject):

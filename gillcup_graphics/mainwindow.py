@@ -8,7 +8,9 @@ import pyglet
 from pyglet import gl
 
 import gillcup
-from gillcup_graphics.transformation import GlTransformation
+from gillcup_graphics.transformation import (
+    GlTransformation, MatrixTransformation)
+
 
 run = pyglet.app.run
 
@@ -52,6 +54,49 @@ class Window(pyglet.window.Window):  # pylint: disable=W0223
         super(Window, self).on_resize(width, height)
         layer = self.layer
         layer.scale = width / layer.width, height / layer.height, 1
+
+    def on_mouse_motion(self, x, y, dx, dy):
+        self.layer.do_pointer_event('motion', 'main', MatrixTransformation(),
+            x, y, dx=dx, dy=dy)
+
+    def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
+        self.layer.do_pointer_event('motion', 'main', MatrixTransformation(),
+            x, y, dx=dx, dy=dy, buttons=buttons, modifiers=modifiers)
+
+    def on_mouse_press(self, x, y, button, modifiers):
+        self.layer.do_pointer_event('press', 'main', MatrixTransformation(),
+            x, y, button=button, modifiers=modifiers)
+
+    def on_mouse_release(self, x, y, button, modifiers):
+        self.layer.do_pointer_event('release', 'main', MatrixTransformation(),
+            x, y, button=button, modifiers=modifiers)
+
+    def on_mouse_leave(self, x, y):
+        self.layer.do_pointer_event('leave', 'main', MatrixTransformation(),
+            x, y)
+
+    def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
+        self.layer.do_pointer_event('scroll', 'main', MatrixTransformation(),
+            x, y, scroll_x=scroll_x, scroll_y=scroll_y)
+
+    def on_key_press(self, key, modifiers):
+        self.layer.do_keyboard_event('press', 'main',
+            key=key, modifiers=modifiers)
+
+    def on_key_release(self, key, modifiers):
+        self.layer.do_keyboard_event('release', 'main',
+            key=key, modifiers=modifiers)
+
+    def on_text(self, text):
+        try:
+            # Work around a Pyglet bug
+            text = text.encode('latin-1').decode('utf-8')
+        except UnicodeError:
+            pass
+        self.layer.do_keyboard_event('type', 'main', text=text)
+
+    def on_text_motion(self, motion):
+        self.layer.do_keyboard_event('motion', 'main', motion=motion)
 
 
 class RealtimeClock(gillcup.Clock):
