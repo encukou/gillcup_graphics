@@ -6,9 +6,9 @@ Gillcup Graphics provides a number of modules:
     :maxdepth: 1
 
     objects
-    effectlayer
     mainwindow
     transformation
+    effectlayer
 
 The most interesting classes of each module are exported directly
 from the gillcup_graphics package:

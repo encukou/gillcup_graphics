@@ -7,6 +7,11 @@ graphics objects.
 This wors by rendering the layer's contents to a texture, and then drawing the
 texture with effects applied.
 Currently, it needs the Framebuffer Object (FBO) OpenGL extension to work.
+
+.. note::
+
+    This code is experimental. Expect it to not work.
+
 """
 
 from pyglet import gl
@@ -20,7 +25,7 @@ from gillcup_graphics import objects
 
 
 class EffectLayer(Layer):
-    """A Layer that can colorie, fade, or pixelate its contents as a whole
+    """A Layer that can colorize, fade, or pixelate its contents as a whole
     """
     color = red, green, blue = objects.color_property
     opacity = objects.opacity_property
