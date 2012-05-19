@@ -233,8 +233,9 @@ class RelativeAnchor(Effect):
     @property
     def value(self):
         """Calculate the value"""
-        return (self.object.width * self.object.relative_anchor_x,
-            self.object.height * self.object.relative_anchor_y)
+        obj = self.object
+        return (obj.width * obj.relative_anchor_x,
+            obj.height * obj.relative_anchor_y)
 
 
 class Layer(GraphicsObject):
@@ -376,11 +377,13 @@ class Text(GraphicsObject):
 
     def draw(self, **kwargs):
         self.setup()
+        label = self.label
         color = self.color + (self.opacity, )
-        self.label.color = [int(a * 255) for a in color]
-        self.label.text = self.text[:int(self.characters_displayed)]
-        self.label.draw()
-        self.label.text = self.text
+        label.color = [int(a * 255) for a in color]
+        displayed_text = self.text[:int(self.characters_displayed)]
+        if label.text != displayed_text:
+            label.text = displayed_text
+        label.draw()
 
     @property
     def name(self):
@@ -409,7 +412,8 @@ class Text(GraphicsObject):
         """
         self.setup()
         label = self.label
-        label.text = self.text
+        if label.text != self.text:
+            label.text = self.text
         return (label.content_width, label.content_height)
 
     @property
