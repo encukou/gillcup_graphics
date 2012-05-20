@@ -25,9 +25,11 @@ Refer to Pyglet documentation for details.
 from __future__ import division, unicode_literals
 
 import sys
+import re
+import collections
+
 import pyglet
 from pyglet import gl
-import re
 
 import gillcup
 from gillcup import properties
@@ -183,7 +185,11 @@ class GraphicsObject(object):
         transformation.translate(*(-x for x in self.anchor))
 
     def hit_test(self, x, y, z):
-        """Perform a hit test on this object"""
+        """Perform a hit test on this object
+
+        Return false if the given point (in local coordinates) is "outside" the
+        object.
+        """
         return True
 
     def die(self):
@@ -204,6 +210,11 @@ class GraphicsObject(object):
         Remove this object from the current parent (if there is one) and
         attech to a new one (if new_parent is not ``None``.
         The `to_back` argument is the same as for :meth:`__init__`.
+
+        Beware that reparenting may throw off the mouse tracking mechanism.
+        Specifically, 'leave' and after-drag 'release' events might not fire.
+        Mouse-aware objects should run their leave/release handlers before
+        calling reparent().
         """
         assert new_parent is not self
         if self.parent:
@@ -222,16 +233,25 @@ class GraphicsObject(object):
         with transformation.state:
             self.change_matrix(transformation)
             transformed_point = transformation.transform_point(x, y)
-            if self.hit_test(*transformed_point):
+            if self.hit_test(*transformed_point) or type is 'leave':
                 local_x, local_y, local_z = transformed_point
-                return self.pointer_event(type, pointer,
-                    local_x, local_y, local_z, global_x=x, global_y=y,
+                retval = self.pointer_event(type, pointer,
+                    x=local_x, y=local_y, z=local_z, global_x=x, global_y=y,
                     transformation=transformation, **kwargs)
+                if type in ('motion', 'leave'):
+                    return True
+                else:
+                    return retval
 
     def pointer_event(self, type, pointer, x, y, z, **kwargs):
+        """Handle a pointer (mouse) event, return true if it as handled
+
+        :param type: Can be 'motion', 'press', 'release', 'leave', or 'scroll'
+        """
         pass
 
     def do_keyboard_event(self, type, keyboard, **kwargs):
+        """Handle a keyboard event, return true if it as handled"""
         pass
 
 
@@ -257,18 +277,11 @@ class Layer(GraphicsObject):
     Init arguments are the same as for
     :class:`~gillcup_graphics.GraphicsObject`.
     """
+
     def __init__(self, parent=None, **kwargs):
         super(Layer, self).__init__(parent, **kwargs)
         self.children = []
-
-    def do_hit_test(self, transformation, **kwargs):
-        if not self.is_hidden():
-            with transformation.state:
-                if self.hit_test(transformation=transformation, **kwargs):
-                    for child in self.children:
-                        for res in child.do_hit_test(transformation, **kwargs):
-                            yield res
-                    yield self
+        self.hovered_children = collections.defaultdict(set)
 
     def draw(self, transformation, **kwargs):
         """Draw all of the layer's children"""
@@ -279,6 +292,27 @@ class Layer(GraphicsObject):
                         **kwargs
                     )
             ]
+
+    def pointer_event(self, type, pointer, x, y, z,
+            transformation, global_x, global_y, **kwargs):
+        args = pointer, transformation, global_x, global_y
+        if type == 'leave':
+            for child in self.hovered_children.get(pointer, ()):
+                child.do_pointer_event('leave', *args, **kwargs)
+            self.hovered_children.pop(pointer, None)
+        elif type == 'motion':
+            new_hovered_children = set()
+            for child in reversed(self.children):
+                if child.do_pointer_event('motion', *args, **kwargs):
+                    new_hovered_children.add(child)
+            for child in self.hovered_children[pointer] - new_hovered_children:
+                child.do_pointer_event('leave', *args, **kwargs)
+            self.hovered_children[pointer] = new_hovered_children
+        else:
+            for child in reversed(self.children):
+                retval = child.do_pointer_event(type, *args, **kwargs)
+                if retval:
+                    return retval
 
 
 class DecorationLayer(Layer):
@@ -309,6 +343,9 @@ class Rectangle(GraphicsObject):
         gl.glVertexPointer(2, gl.GL_FLOAT, 0, self.vertices)
         gl.glDrawArrays(gl.GL_TRIANGLE_STRIP, 0, 4)
 
+    def hit_test(self, x, y, z):
+        """Perform a hit test on the rectangle"""
+        return 0 <= x < self.width and 0 <= y < self.height
 
 class Sprite(GraphicsObject):
     """An image
@@ -337,6 +374,12 @@ class Sprite(GraphicsObject):
                 1,
             )
         self.sprite.draw()
+
+    def hit_test(self, x, y, z):
+        """Perform a hit test on this object. Uses the sprite size.
+
+        Does not take e.g. alpha into account"""
+        return 0 <= x < self.width and 0 <= y < self.height
 
 
 def sanitize_text(string):
@@ -455,3 +498,7 @@ class Text(GraphicsObject):
 
         See `size`"""
         return self.size[0]
+
+    def hit_test(self, x, y, z):
+        """Perform a hit test on this object. Uses the bounding rectangle."""
+        return 0 <= x < self.width and 0 <= y < self.height
