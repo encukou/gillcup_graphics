@@ -229,20 +229,6 @@ class GraphicsObject(object):
                 new_parent.children.append(self)
             self.parent = new_parent
 
-    def do_pointer_event(self, type, pointer, transformation, x, y, **kwargs):
-        with transformation.state:
-            self.change_matrix(transformation)
-            transformed_point = transformation.transform_point(x, y)
-            if self.hit_test(*transformed_point) or type is 'leave':
-                local_x, local_y, local_z = transformed_point
-                retval = self.pointer_event(type, pointer,
-                    x=local_x, y=local_y, z=local_z, global_x=x, global_y=y,
-                    transformation=transformation, **kwargs)
-                if type in ('motion', 'leave'):
-                    return True
-                else:
-                    return retval
-
     def pointer_event(self, type, pointer, x, y, z, **kwargs):
         """Handle a pointer (mouse) event, return true if it as handled
 
@@ -250,7 +236,7 @@ class GraphicsObject(object):
         """
         pass
 
-    def do_keyboard_event(self, type, keyboard, **kwargs):
+    def keyboard_event(self, type, keyboard, **kwargs):
         """Handle a keyboard event, return true if it as handled"""
         pass
 
@@ -281,7 +267,7 @@ class Layer(GraphicsObject):
     def __init__(self, parent=None, **kwargs):
         super(Layer, self).__init__(parent, **kwargs)
         self.children = []
-        self.hovered_children = collections.defaultdict(set)
+        self.hovered_children = collections.defaultdict(dict)
 
     def draw(self, transformation, **kwargs):
         """Draw all of the layer's children"""
@@ -293,26 +279,41 @@ class Layer(GraphicsObject):
                     )
             ]
 
-    def pointer_event(self, type, pointer, x, y, z,
-            transformation, global_x, global_y, **kwargs):
-        args = pointer, transformation, global_x, global_y
+
+    def pointer_event(self, type, pointer, x, y, z, **kwargs):
+        if 'global_point' not in kwargs:
+            kwargs['global_point'] = x, y, z
+        def _children_for_ptr(children, x, y, z):
+            # CAREFUL! Yield inside a transformation.state context!
+            for child in reversed(children):
+                with transformation.state:
+                    child.change_matrix(transformation)
+                    transformed_point = transformation.transform_point(x, y)
+                    hit = child.hit_test(*transformed_point)
+                    yield child, transformed_point, hit
+
+        transformation = kwargs['transformation']
         if type == 'leave':
-            for child in self.hovered_children.get(pointer, ()):
-                child.do_pointer_event('leave', *args, **kwargs)
-            self.hovered_children.pop(pointer, None)
+            children = list(self.hovered_children[pointer].get(None, ()))
+            for child, point, hit in _children_for_ptr(children, x, y, z):
+                child.pointer_event('leave', pointer, *point, **kwargs)
+            self.hovered_children.pop(pointer)
         elif type == 'motion':
             new_hovered_children = set()
-            for child in reversed(self.children):
-                if child.do_pointer_event('motion', *args, **kwargs):
+            for child, point, hit in _children_for_ptr(self.children, x, y, z):
+                child.pointer_event('motion', pointer, *point, **kwargs)
+                if hit:
                     new_hovered_children.add(child)
-            for child in self.hovered_children[pointer] - new_hovered_children:
-                child.do_pointer_event('leave', *args, **kwargs)
-            self.hovered_children[pointer] = new_hovered_children
+            hovered = self.hovered_children[pointer].get(None, set())
+            for child in hovered - new_hovered_children:
+                child.pointer_event('leave', pointer, *point, **kwargs)
+            self.hovered_children[pointer][None] = new_hovered_children
         else:
-            for child in reversed(self.children):
-                retval = child.do_pointer_event(type, *args, **kwargs)
-                if retval:
-                    return retval
+            for child, point, hit in _children_for_ptr(self.children, x, y, z):
+                if hit:
+                    ret = child.pointer_event(type, pointer, *point, **kwargs)
+                    if ret:
+                        return ret
 
 
 class DecorationLayer(Layer):
@@ -323,7 +324,7 @@ class DecorationLayer(Layer):
     def do_hit_test(self, transformation, **kwargs):
         return ()
 
-    def do_pointer_event(*_ignore, **_everything):
+    def pointer_event(*_ignore, **_everything):
         pass
 
 
@@ -346,6 +347,7 @@ class Rectangle(GraphicsObject):
     def hit_test(self, x, y, z):
         """Perform a hit test on the rectangle"""
         return 0 <= x < self.width and 0 <= y < self.height
+
 
 class Sprite(GraphicsObject):
     """An image

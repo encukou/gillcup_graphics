@@ -56,35 +56,39 @@ class Window(pyglet.window.Window):  # pylint: disable=W0223
         layer.scale = width / layer.width, height / layer.height, 1
 
     def on_mouse_motion(self, x, y, dx, dy):
-        self.layer.do_pointer_event('motion', 'main', MatrixTransformation(),
-            x, y, dx=dx, dy=dy)
+        self.layer.pointer_event('motion', 'main', x, y, 0, dx=dx, dy=dy,
+            transformation=MatrixTransformation())
 
     def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
-        self.layer.do_pointer_event('motion', 'main', MatrixTransformation(),
-            x, y, dx=dx, dy=dy, buttons=buttons, modifiers=modifiers)
+        self.layer.pointer_event('motion', 'main', x, y, 0, dx=dx, dy=dy,
+            buttons=buttons, modifiers=modifiers,
+            transformation=MatrixTransformation())
 
     def on_mouse_press(self, x, y, button, modifiers):
-        self.layer.do_pointer_event('press', 'main', MatrixTransformation(),
-            x, y, button=button, modifiers=modifiers)
+        self.layer.pointer_event('press', 'main', x, y, 0,
+            button=button, modifiers=modifiers,
+            transformation=MatrixTransformation())
 
     def on_mouse_release(self, x, y, button, modifiers):
-        self.layer.do_pointer_event('release', 'main', MatrixTransformation(),
-            x, y, button=button, modifiers=modifiers)
+        self.layer.pointer_event('release', 'main', x, y, 0,
+            button=button, modifiers=modifiers,
+            transformation=MatrixTransformation())
 
     def on_mouse_leave(self, x, y):
-        self.layer.do_pointer_event('leave', 'main', MatrixTransformation(),
-            x, y)
+        self.layer.pointer_event('leave', 'main', x, y, 0,
+            transformation=MatrixTransformation())
 
     def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
-        self.layer.do_pointer_event('scroll', 'main', MatrixTransformation(),
-            x, y, scroll_x=scroll_x, scroll_y=scroll_y)
+        self.layer.pointer_event('scroll', 'main', x, y, 0,
+            scroll_x=scroll_x, scroll_y=scroll_y,
+            transformation=MatrixTransformation())
 
     def on_key_press(self, key, modifiers):
-        self.layer.do_keyboard_event('press', 'main',
+        self.layer.keyboard_event('press', 'main',
             key=key, modifiers=modifiers)
 
     def on_key_release(self, key, modifiers):
-        self.layer.do_keyboard_event('release', 'main',
+        self.layer.keyboard_event('release', 'main',
             key=key, modifiers=modifiers)
 
     def on_text(self, text):
