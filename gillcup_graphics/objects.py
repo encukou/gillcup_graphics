@@ -355,12 +355,12 @@ class Text(GraphicsObject):
     def __init__(self, parent, text, font_name=None, **kwargs):
         super(Text, self).__init__(parent, **kwargs)
         self.text = text
-        self.font_name = font_name
         self.label = pyglet.text.Label(
                 text,
                 font_name=font_name,
                 font_size=self.font_size,
             )
+        self.font_name = font_name
 
     color = red, green, blue = color_property
     opacity = opacity_property
@@ -369,11 +369,18 @@ class Text(GraphicsObject):
     characters_displayed = gillcup.AnimatedProperty(sys.maxint,
         docstring="The maximum number of characters displayed")
 
+    @property
+    def font_name(self):
+        return self.label.font_name
+
+    @font_name.setter
+    def font_name(self, new_font_name):
+        self.label.font_name = new_font_name
+
     def setup(self):
         """Assign the properties to the underlying Pyglet label"""
-        if self.font_name:
-            self.label.font_name = self.font_name
-        self.label.font_size = self.font_size
+        if self.label.font_size != self.font_size:
+            self.label.font_size = self.font_size
 
     def draw(self, **kwargs):
         self.setup()
