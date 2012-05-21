@@ -1,6 +1,8 @@
 """Tests for the transformation module
 """
 
+from __future__ import division
+
 import math
 
 from gillcup_graphics.transformation import MatrixTransformation
@@ -22,8 +24,14 @@ def sequences_almost_equal(a_seq, b_seq):
 def matrix_almost_equal(matrix, *args):
     """Return true if elements of matrix are almost equal to args"""
     print '---'
-    print matrix
+    print tuple(matrix)
     print args
+    for x in range(4):
+        for y in range(4):
+            if matrix[x, y] != matrix[x + y * 4]:
+                return False
+            if not almost_equal(matrix[x, y], args[x + y * 4]):
+                return False
     return sequences_almost_equal(matrix, args)
 
 
@@ -327,3 +335,27 @@ def test_inverse(matrix):
             0.016475714, 0.005583347, -0.016507988, 0,
             1.049217363, 1.462320478, -4.118363724, 1,
         ))
+
+
+def test_transform_point(matrix):
+    """Test transforming a point"""
+    matrix.scale(1 / 3, 1 / 3, 1 / 3)
+    assert sequences_almost_equal(matrix.transform_point(1, 1, 1), (3, 3, 3))
+    assert sequences_almost_equal(matrix.transform_point(0, 1, 1), (0, 3, 3))
+    assert sequences_almost_equal(matrix.transform_point(1, 0, 1), (3, 0, 3))
+    assert sequences_almost_equal(matrix.transform_point(1, 1, 0), (3, 3, 0))
+    assert sequences_almost_equal(matrix.transform_point(2, 3, 4), (6, 9, 12))
+    matrix.reset()
+    matrix.rotate(90)
+    assert sequences_almost_equal(matrix.transform_point(1, 1, 1), (1, -1, 1))
+    assert sequences_almost_equal(matrix.transform_point(0, 1, 1), (1, 0, 1))
+    assert sequences_almost_equal(matrix.transform_point(1, 0, 1), (0, -1, 1))
+    assert sequences_almost_equal(matrix.transform_point(1, 1, 0), (1, -1, 0))
+    assert sequences_almost_equal(matrix.transform_point(2, 3, 4), (3, -2, 4))
+    matrix.reset()
+    matrix.translate(-1, -2, -3)
+    assert sequences_almost_equal(matrix.transform_point(1, 1, 1), (2, 3, 4))
+    assert sequences_almost_equal(matrix.transform_point(0, 1, 1), (1, 3, 4))
+    assert sequences_almost_equal(matrix.transform_point(1, 0, 1), (2, 2, 4))
+    assert sequences_almost_equal(matrix.transform_point(1, 1, 0), (2, 3, 3))
+    assert sequences_almost_equal(matrix.transform_point(2, 3, 4), (3, 5, 7))

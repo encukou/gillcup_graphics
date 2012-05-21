@@ -55,85 +55,12 @@ class BaseTransformation(object):
         """Restore matrix saved by the corresponding push() call"""
         raise NotImplementedError
 
-    def translate(self, x=0, y=0, z=0):
-        """Premultiply a translation matrix to self, in situ"""
-        raise NotImplementedError
-
-    def rotate(self, angle, x=0, y=0, z=1):
-        """Premultiply a rotation matrix to self, in situ"""
-        raise NotImplementedError
-
-    def scale(self, x=1, y=1, z=1):
-        """Premultiply a scaling matrix to self, in situ"""
-        raise NotImplementedError
-
     def premultiply(self, values):
         """Premultiply the given matrix to self, in situ
 
         :param values: An iterable of 16 matrix elements in row-major (C) order
         """
         raise NotImplementedError
-
-
-class GlTransformation(BaseTransformation):
-    """OpenGL implementation: affects the OpenGL state directly
-    """
-    def reset(self):
-        gl.glLoadIdentity()
-
-    def push(self):
-        gl.glPushMatrix()
-
-    def pop(self):
-        gl.glPopMatrix()
-
-    def translate(self, x=0, y=0, z=0):
-        gl.glTranslatef(x, y, z)
-
-    def rotate(self, angle, x=0, y=0, z=1):
-        gl.glRotatef(angle, x, y, z)
-
-    def scale(self, x=1, y=1, z=1):
-        gl.glScalef(x, y, z)
-
-    def premultiply(self, values):
-        gl.glMultMatrixf(*values)
-
-
-class TupleTransformation(BaseTransformation):
-    """Implementation that uses tuples. Slow.
-    """
-    def __init__(self):
-        super(MatrixTransformation, self).__init__()
-        self.matrix = self.identity
-        self.stack = []
-
-    identity = (
-            1, 0, 0, 0,
-            0, 1, 0, 0,
-            0, 0, 1, 0,
-            0, 0, 0, 1,
-        )
-
-    def __len__(self):
-        return 16
-
-    def __getitem__(self, item):
-        try:
-            col, row = item
-        except TypeError:
-            return self.matrix[item]
-        else:
-            return self.matrix[row * 4 + col]
-
-    def reset(self):
-        self.matrix = self.identity
-
-    def push(self):
-        self.stack.append(self.matrix)
-
-    def pop(self):
-        self.matrix = self.stack.pop()
 
     def translate(self, x=0, y=0, z=0):
         self.premultiply((
@@ -167,6 +94,99 @@ class TupleTransformation(BaseTransformation):
                 0, 0, z, 0,
                 0, 0, 0, 1,
             ))
+
+
+class GlTransformation(BaseTransformation):
+    """OpenGL implementation: affects the OpenGL state directly
+    """
+    def reset(self):
+        gl.glLoadIdentity()
+
+    def push(self):
+        gl.glPushMatrix()
+
+    def pop(self):
+        gl.glPopMatrix()
+
+    def translate(self, x=0, y=0, z=0):
+        gl.glTranslatef(x, y, z)
+
+    def rotate(self, angle, x=0, y=0, z=1):
+        gl.glRotatef(angle, x, y, z)
+
+    def scale(self, x=1, y=1, z=1):
+        gl.glScalef(x, y, z)
+
+    def premultiply(self, values):
+        gl.glMultMatrixf(*values)
+
+
+class BaseMatrixTransformation(BaseTransformation):
+    """A Transformation used for mouse events. Offers some more functionality.
+
+    The fastest implementation available is exported as MatrixTransformation.
+    """
+    def __len__(self):
+        return 16
+
+    def __getitem__(self, item):
+        """Get item. Supports (x, y) pairs or single integers.
+
+        Note that __len__ and __getitem__ are one variant of the iteration
+        protocol, so BaseMatrixTransformation supports iter() as well.
+        """
+        raise NotImplementedError
+
+    def transform_point(self, x=0, y=0, z=0):
+        """Return the given vector multiplied by this matrix
+
+        Returns a 3-element iterable
+        """
+        raise NotImplementedError
+
+    @property
+    def inverse(self):
+        """The inverse (matrix with the opposite effect) of this matrix.
+
+        N.B. Only works with transformation martices (ones where the last
+        column is identity)
+
+        Returns a 16-element iterable
+        """
+        raise NotImplementedError
+
+
+class TupleTransformation(BaseMatrixTransformation):
+    """Implementation that uses tuples. Slow.
+    """
+    def __init__(self):
+        super(TupleTransformation, self).__init__()
+        self.matrix = self.identity
+        self.stack = []
+
+    identity = (
+            1, 0, 0, 0,
+            0, 1, 0, 0,
+            0, 0, 1, 0,
+            0, 0, 0, 1,
+        )
+
+    def __getitem__(self, item):
+        try:
+            col, row = item
+        except TypeError:
+            return self.matrix[item]
+        else:
+            return self.matrix[row * 4 + col]
+
+    def reset(self):
+        self.matrix = self.identity
+
+    def push(self):
+        self.stack.append(self.matrix)
+
+    def pop(self):
+        self.matrix = self.stack.pop()
 
     def premultiply(self, values):
         (m1_0, m1_1, m1_2, m1_3,
@@ -204,7 +224,6 @@ class TupleTransformation(BaseTransformation):
             )
 
     def transform_point(self, x=0, y=0, z=0):
-        """Return the given vector multiplied by this matrix"""
         (m1_0, m1_1, m1_2, m1_3,
          m1_4, m1_5, m1_6, m1_7,
          m1_8, m1_9, m1_10, m1_11,
@@ -218,11 +237,6 @@ class TupleTransformation(BaseTransformation):
 
     @property
     def inverse(self):
-        """The inverse (matrix with the opposite effect) of this matrix.
-
-        N.B. Only works with transformation martices (last column is identity)
-        """
-
         (i0, i1, i2, i3,
          i4, i5, i6, i7,
          i8, i9, i10, i11,
@@ -274,6 +288,6 @@ class TupleTransformation(BaseTransformation):
         m[13] = - (i12 * m[1] + i13 * m[5] + i14 * m[9])
         m[14] = - (i12 * m[2] + i13 * m[6] + i14 * m[10])
 
-        return tuple(m)
+        return m
 
 MatrixTransformation = TupleTransformation
