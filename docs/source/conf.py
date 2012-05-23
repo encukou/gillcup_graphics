@@ -11,12 +11,8 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys
-import os
-
-from gillcup_graphics import __version__, __version_info__
-
-import sys
+###
+# Mock out GL: readthedocs doesn't do C libs
 
 class Mock(object):
     def __init__(self, *args, **kwargs):
@@ -36,6 +32,15 @@ class Mock(object):
 
 for mod_name in ['pyglet.gl', 'GL']:
     sys.modules[mod_name] = Mock()
+
+###
+
+import sys
+import os
+
+from gillcup_graphics import __version__, __version_info__
+
+import sys
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
