@@ -30,7 +30,7 @@ class Mock(object):
         else:
             return Mock()
 
-for mod_name in ['pyglet.gl', 'GL']:
+for mod_name in ['pyglet.gl', 'pyglet.lib', 'GL']:
     sys.modules[mod_name] = Mock()
 
 ###
