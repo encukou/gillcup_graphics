@@ -11,10 +11,18 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
+import sys
+
 ###
 # Mock out GL: readthedocs doesn't do C libs
 
+class MockMeta(type):
+    def __mul__(cls, other):
+        return cls
+
 class Mock(object):
+    __metaclass__ = MockMeta
+
     def __init__(self, *args, **kwargs):
         pass
 
@@ -26,16 +34,15 @@ class Mock(object):
         if name in ('__file__', '__path__'):
             return '/dev/null'
         elif name[0] == name[0].upper():
-            return type(name, (), {})
+            return MockMeta(name, (Mock,), {})
         else:
             return Mock()
 
-for mod_name in ['pyglet.gl', 'pyglet.lib', 'GL']:
+for mod_name in ['pyglet.lib', 'GL', 'pyglet.window.xlib', 'pyglet.gl']:
     sys.modules[mod_name] = Mock()
 
 ###
 
-import sys
 import os
 
 from gillcup_graphics import __version__, __version_info__
