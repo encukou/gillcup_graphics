@@ -371,10 +371,15 @@ class Text(GraphicsObject):
 
     @property
     def font_name(self):
+        """Name of the font to use for this label"""
         return self.label.font_name
 
     @font_name.setter
     def font_name(self, new_font_name):
+        """Name of the font to use for this label
+
+        Refer to Pyglet docs for info on font loading.
+        """
         self.label.font_name = new_font_name
 
     def setup(self):
