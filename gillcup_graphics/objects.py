@@ -150,7 +150,7 @@ class GraphicsObject(object):
         elif self.is_hidden():
             return True
         with transformation.state:
-            self.change_matrix(transformation)
+            self.transform(transformation)
             self.draw(transformation=transformation, **kwargs)
         return True
 
@@ -168,7 +168,7 @@ class GraphicsObject(object):
         """
         pass
 
-    def change_matrix(self, transformation):
+    def transform(self, transformation):
         """Set up the transformation matrix for object
 
         :param transformation: The
@@ -299,7 +299,7 @@ class Layer(GraphicsObject):
             # CAREFUL! Yield inside a transformation.state context!
             for child in reversed(children):
                 with transformation.state:
-                    child.change_matrix(transformation)
+                    child.transform(transformation)
                     try:
                         point = transformation.point
                     except ValueError:
@@ -320,7 +320,7 @@ class Layer(GraphicsObject):
                 for button, child in reg.iteritems():
                     if child in self.children:
                         with transformation.state:
-                            child.change_matrix(transformation)
+                            child.transform(transformation)
                             point = transformation.point
                             child.pointer_event('drag', pointer, *point,
                                 button=button, **kwargs)
@@ -355,7 +355,7 @@ class Layer(GraphicsObject):
             else:
                 if child in self.children:
                     with transformation.state:
-                        child.change_matrix(transformation)
+                        child.transform(transformation)
                         point = transformation.point
                         child.pointer_event(kind, pointer, *point, **kwargs)
                 del self.dragging_children[pointer][button]

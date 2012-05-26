@@ -20,7 +20,7 @@ gillcup_graphics.objects
     Subclassable methods:
 
         .. automethod:: gillcup_graphics.GraphicsObject.is_hidden
-        .. automethod:: gillcup_graphics.GraphicsObject.change_matrix
+        .. automethod:: gillcup_graphics.GraphicsObject.transform
         .. automethod:: gillcup_graphics.GraphicsObject.die
 
 .. autoclass:: gillcup_graphics.Layer

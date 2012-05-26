@@ -1,10 +1,20 @@
 # Encoding: UTF-8
 """Transformation objects
 
-A graphic object's transform method takes a Transformation object and updates
-it with its transformation. For drawing, use a GlTransformation object, which
-will update the OpenGL state directly. For hit tests, use a
-MatrixTransformation object.
+The Transformation interface is implemented by several classes that have used
+whenever info about graphics objects' position, scale, rotation, etc. are
+needed.
+
+A graphic object's ``transform`` method takes a Transformation object and
+calls its ``translate``, ``scale``, ``rotate`` or ``premultiply`` methods.
+For drawing, a GlTransformation object, which will update the OpenGL state
+directly, is passed to the method. For hit tests and mouse events, a
+PointTransformation is used.
+
+Each transformation object implements a stack modeled on the OpenGL matrix
+stack: any state can be saved with ``push``, and the last-pushed state
+restored with ``pop``. The ``state`` context manager simplifies working with
+the stack.
 """
 
 from __future__ import division
@@ -149,6 +159,7 @@ class PointTransformation(BaseTransformation):
         if not angle:
             return
         elif x == y == 0 and z == 1:
+            # Cheaper rotation in the x-y axis
             c = cos(angle * deg_to_rad)
             s = sin(angle * deg_to_rad)
             denom = c * c + s * s
@@ -203,9 +214,10 @@ class PointTransformation(BaseTransformation):
 
 
 class BaseMatrixTransformation(BaseTransformation):
-    """A Transformation used for mouse events. Offers some more functionality.
+    """A Transformation with a full, queryable result matrix.
 
-    The fastest implementation available is exported as MatrixTransformation.
+    The fastest implementation available will be exported
+    as MatrixTransformation.
     """
     def __len__(self):
         return 16
