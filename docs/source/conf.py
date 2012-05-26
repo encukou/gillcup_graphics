@@ -13,12 +13,14 @@
 
 import sys
 
+
 ###
 # Mock out GL: readthedocs doesn't do C libs
 
 class MockMeta(type):
     def __mul__(cls, other):
         return cls
+
 
 class Mock(object):
     __metaclass__ = MockMeta

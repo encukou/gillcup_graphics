@@ -1,4 +1,4 @@
-
+# Encoding: UTF-8
 """Transformation objects
 
 A graphic object's transform method takes a Transformation object and updates
@@ -71,6 +71,8 @@ class BaseTransformation(object):
             ))
 
     def rotate(self, angle, x=0, y=0, z=1):
+        if not angle:
+            return
         c = cos(angle * deg_to_rad)
         s = sin(angle * deg_to_rad)
         d = 1 - c
@@ -123,11 +125,11 @@ class GlTransformation(BaseTransformation):
 
 class PointTransformation(BaseTransformation):
     def __init__(self, x, y, z):
-        self.point = self.orig_point = x, y, z
+        self.point = self.original_point = x, y, z
         self.stack = []
 
     def reset(self):
-        self.point = self.orig_point
+        self.point = self.original_point
 
     def push(self):
         self.stack.append(self.point)
@@ -135,25 +137,55 @@ class PointTransformation(BaseTransformation):
     def pop(self):
         self.point = self.stack.pop()
 
-    def translate(self, x=0, y=0, z=0):
-        px, py, pz = self.point
-        self.point = px - x, py - y, pz - z
+    #def translate(self, x=0, y=0, z=0):
+    #    px, py, pz = self.point
+    #    self.point = px - x, py - y, pz - z
 
-    def scale(self, x=1, y=1, z=1):
-        px, py, pz = self.point
-        self.point = px / x, py / y, pz / z
+    #def scale(self, x=1, y=1, z=1):
+    #    px, py, pz = self.point
+    #    self.point = px / x, py / y, pz / z
 
     def premultiply(self, values):
-        (xx, xy, xz, x1,
-         yx, yy, yz, y1,
-         zx, zy, zz, z1,
-         dummy, dummy, dummy, dummy) = values
+        (xx, yx, zx, dummy,
+         xy, yy, zy, dummy,
+         xz, yz, zz, dummy,
+         x1, y1, z1, dummy) = values
         x, y, z = self.point
+
+        # dot product: [x y z] · invert(matrix)
+        # Don't we all love matrices?
         self.point = (
-                x * xx + y * xy + z * xz + x1,
-                x * yx + y * yy + z * yz + y1,
-                x * zx + y * zy + z * zz + z1,
-            )
+            (-xy * (yz * z1 - y1 * zz) + yy * (xz * z1 - x1 * zz) -
+            (xz * y1 - x1 * yz) * zy) / (xx * (yy * zz - yz * zy) +
+            yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx) +
+            (x * (yy * zz - yz * zy)) / (xx * (yy * zz - yz * zy) +
+            yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx) +
+            (y * (xz * zy - xy * zz)) / (xx * (yy * zz - yz * zy) +
+            yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx) +
+            ((xy * yz - xz * yy) * z) / (xx * (yy * zz - yz * zy) +
+            yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx),
+
+            (xx * (yz * z1 - y1 * zz) - yx * (xz * z1 - x1 * zz) +
+            (xz * y1 - x1 * yz) * zx) / (xx * (yy * zz - yz * zy) +
+            yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx) +
+            (x * (yz * zx - yx * zz)) / (xx * (yy * zz - yz * zy) +
+            yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx) +
+            (y * (xx * zz - xz * zx)) / (xx * (yy * zz - yz * zy) +
+            yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx) +
+            ((xz * yx - xx * yz) * z) / (xx * (yy * zz - yz * zy) +
+            yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx),
+
+            (-xx * (yy * z1 - y1 * zy) + yx * (xy * z1 - x1 * zy) -
+            (xy * y1 - x1 * yy) * zx) / (xx * (yy * zz - yz * zy) +
+            yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx) +
+            (x * (yx * zy - yy * zx)) / (xx * (yy * zz - yz * zy) +
+            yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx) +
+            (y * (xy * zx - xx * zy)) / (xx * (yy * zz - yz * zy) +
+            yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx) +
+            ((xx * yy - xy * yx) * z) / (xx * (yy * zz - yz * zy) +
+            yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx),
+        )
+        return
 
 
 class BaseMatrixTransformation(BaseTransformation):
@@ -257,6 +289,11 @@ class TupleTransformation(BaseMatrixTransformation):
                 m2_12 * m1_2 + m2_13 * m1_6 + m2_14 * m1_10 + m2_15 * m1_14,
                 m2_12 * m1_3 + m2_13 * m1_7 + m2_14 * m1_11 + m2_15 * m1_15,
             )
+        m = self.matrix
+        assert m[3] == 0
+        assert m[7] == 0
+        assert m[11] == 0
+        assert m[15] == 1
 
     def transform_point(self, x=0, y=0, z=0):
         (m1_0, m1_1, m1_2, m1_3,
