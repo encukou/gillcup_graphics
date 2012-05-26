@@ -9,9 +9,9 @@ MatrixTransformation object.
 
 from __future__ import division
 
-# The more crazy matrix stuff is partly based on the GameObjects library by
-#  Will McGugan, which is today, unfortunately, without a licence, but
-#  the author wishes it to be used without restrictions:
+# Some of the more crazy matrix stuff is based on the GameObjects library by
+#  Will McGugan, which is today, unfortunately, without an official licence,
+#  but the author wishes it to be used without restrictions:
 # http://www.willmcgugan.com/blog/tech/2007/6/7/game-objects-commandments/
 #   #comment146
 
@@ -137,13 +137,28 @@ class PointTransformation(BaseTransformation):
     def pop(self):
         self.point = self.stack.pop()
 
-    #def translate(self, x=0, y=0, z=0):
-    #    px, py, pz = self.point
-    #    self.point = px - x, py - y, pz - z
+    def translate(self, x=0, y=0, z=0):
+        px, py, pz = self.point
+        self.point = px - x, py - y, pz - z
 
-    #def scale(self, x=1, y=1, z=1):
-    #    px, py, pz = self.point
-    #    self.point = px / x, py / y, pz / z
+    def scale(self, x=1, y=1, z=1):
+        px, py, pz = self.point
+        self.point = px / x, py / y, pz / z
+
+    def rotate(self, angle, x=0, y=0, z=1):
+        if not angle:
+            return
+        elif x == y == 0 and z == 1:
+            c = cos(angle * deg_to_rad)
+            s = sin(angle * deg_to_rad)
+            denom = c * c + s * s
+            pt_x, pt_y, pt_z = self.point
+            self.point = (
+                    (pt_y * s) / denom + (pt_x * c) / denom,
+                    (pt_y * c) / denom - (pt_x * s) / denom,
+                    pt_z)
+        else:
+            super(PointTransformation, self).rotate(angle, x, y, z)
 
     def premultiply(self, values):
         (xx, yx, zx, dummy,
@@ -152,40 +167,39 @@ class PointTransformation(BaseTransformation):
          x1, y1, z1, dummy) = values
         x, y, z = self.point
 
-        # dot product: [x y z] · invert(matrix)
+        # calculate the dot product, [x y z 1] · invert(matrix)
         # Don't we all love matrices?
         self.point = (
-            (-xy * (yz * z1 - y1 * zz) + yy * (xz * z1 - x1 * zz) -
-            (xz * y1 - x1 * yz) * zy) / (xx * (yy * zz - yz * zy) +
-            yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx) +
-            (x * (yy * zz - yz * zy)) / (xx * (yy * zz - yz * zy) +
-            yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx) +
-            (y * (xz * zy - xy * zz)) / (xx * (yy * zz - yz * zy) +
-            yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx) +
-            ((xy * yz - xz * yy) * z) / (xx * (yy * zz - yz * zy) +
-            yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx),
+                (-xy * (yz * z1 - y1 * zz) + yy * (xz * z1 - x1 * zz) -
+                (xz * y1 - x1 * yz) * zy) / (xx * (yy * zz - yz * zy) +
+                yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx) +
+                (x * (yy * zz - yz * zy)) / (xx * (yy * zz - yz * zy) +
+                yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx) +
+                (y * (xz * zy - xy * zz)) / (xx * (yy * zz - yz * zy) +
+                yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx) +
+                ((xy * yz - xz * yy) * z) / (xx * (yy * zz - yz * zy) +
+                yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx),
 
-            (xx * (yz * z1 - y1 * zz) - yx * (xz * z1 - x1 * zz) +
-            (xz * y1 - x1 * yz) * zx) / (xx * (yy * zz - yz * zy) +
-            yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx) +
-            (x * (yz * zx - yx * zz)) / (xx * (yy * zz - yz * zy) +
-            yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx) +
-            (y * (xx * zz - xz * zx)) / (xx * (yy * zz - yz * zy) +
-            yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx) +
-            ((xz * yx - xx * yz) * z) / (xx * (yy * zz - yz * zy) +
-            yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx),
+                (xx * (yz * z1 - y1 * zz) - yx * (xz * z1 - x1 * zz) +
+                (xz * y1 - x1 * yz) * zx) / (xx * (yy * zz - yz * zy) +
+                yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx) +
+                (x * (yz * zx - yx * zz)) / (xx * (yy * zz - yz * zy) +
+                yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx) +
+                (y * (xx * zz - xz * zx)) / (xx * (yy * zz - yz * zy) +
+                yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx) +
+                ((xz * yx - xx * yz) * z) / (xx * (yy * zz - yz * zy) +
+                yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx),
 
-            (-xx * (yy * z1 - y1 * zy) + yx * (xy * z1 - x1 * zy) -
-            (xy * y1 - x1 * yy) * zx) / (xx * (yy * zz - yz * zy) +
-            yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx) +
-            (x * (yx * zy - yy * zx)) / (xx * (yy * zz - yz * zy) +
-            yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx) +
-            (y * (xy * zx - xx * zy)) / (xx * (yy * zz - yz * zy) +
-            yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx) +
-            ((xx * yy - xy * yx) * z) / (xx * (yy * zz - yz * zy) +
-            yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx),
-        )
-        return
+                (-xx * (yy * z1 - y1 * zy) + yx * (xy * z1 - x1 * zy) -
+                (xy * y1 - x1 * yy) * zx) / (xx * (yy * zz - yz * zy) +
+                yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx) +
+                (x * (yx * zy - yy * zx)) / (xx * (yy * zz - yz * zy) +
+                yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx) +
+                (y * (xy * zx - xx * zy)) / (xx * (yy * zz - yz * zy) +
+                yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx) +
+                ((xx * yy - xy * yx) * z) / (xx * (yy * zz - yz * zy) +
+                yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx),
+            )
 
 
 class BaseMatrixTransformation(BaseTransformation):
