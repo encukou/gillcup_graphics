@@ -301,8 +301,7 @@ class Layer(GraphicsObject):
                 with transformation.state:
                     child.change_matrix(transformation)
                     try:
-                        point = transformation.transform_point(
-                            *kwargs['global_point'])
+                        point = transformation.point
                     except ValueError:
                         yield child, (-1, -1, -1), None
                     else:
@@ -322,8 +321,7 @@ class Layer(GraphicsObject):
                     if child in self.children:
                         with transformation.state:
                             child.change_matrix(transformation)
-                            point = transformation.transform_point(
-                                *global_point)
+                            point = transformation.point
                             child.pointer_event('drag', pointer, *point,
                                 button=button, **kwargs)
             new_hovered_children = set()
@@ -358,7 +356,7 @@ class Layer(GraphicsObject):
                 if child in self.children:
                     with transformation.state:
                         child.change_matrix(transformation)
-                        point = transformation.transform_point(*global_point)
+                        point = transformation.point
                         child.pointer_event(kind, pointer, *point, **kwargs)
                 del self.dragging_children[pointer][button]
                 if not self.dragging_children[pointer]:

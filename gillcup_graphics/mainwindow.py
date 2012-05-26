@@ -9,7 +9,7 @@ from pyglet import gl
 
 import gillcup
 from gillcup_graphics.transformation import (
-    GlTransformation, MatrixTransformation)
+    GlTransformation, PointTransformation)
 
 
 run = pyglet.app.run
@@ -78,7 +78,7 @@ class Window(pyglet.window.Window):  # pylint: disable=W0223
             scroll_x=scroll_x, scroll_y=scroll_y)
 
     def pointer_event(self, kind, pointer, x, y, **kwargs):
-        transformation = MatrixTransformation()
+        transformation = PointTransformation(x, y, 0)
         layer = self.layer
         with transformation.state:
             layer.change_matrix(transformation)

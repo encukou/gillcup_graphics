@@ -123,25 +123,37 @@ class GlTransformation(BaseTransformation):
 
 class PointTransformation(BaseTransformation):
     def __init__(self, x, y, z):
-        self.point = self.orig_point = list(x, y, z)
+        self.point = self.orig_point = x, y, z
         self.stack = []
 
     def reset(self):
         self.point = self.orig_point
 
     def push(self):
-        self.stack.push(list(self.point))
+        self.stack.append(self.point)
 
     def pop(self):
         self.point = self.stack.pop()
 
     def translate(self, x=0, y=0, z=0):
         px, py, pz = self.point
-        self.point = [px - x, py - y, pz - z]
+        self.point = px - x, py - y, pz - z
 
     def scale(self, x=1, y=1, z=1):
         px, py, pz = self.point
-        self.point = [px / x, py / y, pz / z]
+        self.point = px / x, py / y, pz / z
+
+    def premultiply(self, values):
+        (xx, xy, xz, x1,
+         yx, yy, yz, y1,
+         zx, zy, zz, z1,
+         dummy, dummy, dummy, dummy) = values
+        x, y, z = self.point
+        self.point = (
+                x * xx + y * xy + z * xz + x1,
+                x * yx + y * yy + z * yz + y1,
+                x * zx + y * zy + z * zz + z1,
+            )
 
 
 class BaseMatrixTransformation(BaseTransformation):
