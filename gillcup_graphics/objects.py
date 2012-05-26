@@ -184,7 +184,7 @@ class GraphicsObject(object):
         transformation.scale(*self.scale)
         transformation.translate(*(-x for x in self.anchor))
 
-    def hit_test(self, x, y, z):
+    def hit_test(self, _x, _y, _z):
         """Perform a hit test on this object
 
         Return false if the given point (in local coordinates) is "outside" the
@@ -289,44 +289,47 @@ class Layer(GraphicsObject):
             ]
 
 
-    def pointer_event(self, kind, pointer, x, y, z, **kwargs):
+    def pointer_event(self, kind, pointer, **kwargs):
+        transformation = kwargs['transformation']
         toplevel = 'global_point' not in kwargs
         if toplevel:
-            global_point = kwargs['global_point'] = x, y, z
+            global_point = kwargs['global_point'] = transformation.point
         else:
             global_point = kwargs['global_point']
-        def _children_for_ptr(children, x, y, z):
+        def _children_for_ptr(children):
             # CAREFUL! Yield inside a transformation.state context!
             for child in reversed(children):
                 with transformation.state:
-                    child.transform(transformation)
                     try:
-                        point = transformation.point
-                    except ValueError:
+                        child.transform(transformation)
+                    except ZeroDivisionError:
                         yield child, (-1, -1, -1), None
                     else:
-                        hit = child.hit_test(*point)
-                        yield child, point, hit
+                        try:
+                            point = transformation.point
+                        except ValueError:
+                            yield child, (-1, -1, -1), None
+                        else:
+                            hit = child.hit_test(*point)
+                            yield child, point, hit
 
-        transformation = kwargs['transformation']
         if kind == 'leave':
             children = list(self.hovered_children.get(pointer, ()))
-            for child, point, hit in _children_for_ptr(children, x, y, z):
+            for child, point, hit in _children_for_ptr(children):
                 child.pointer_event('leave', pointer, *point, **kwargs)
             self.hovered_children.pop(pointer, None)
         elif kind == 'motion':
-            if toplevel:
-                reg = self.dragging_children.get(pointer, {})
-                for button, child in reg.iteritems():
-                    if child in self.children:
-                        with transformation.state:
-                            child.transform(transformation)
-                            point = transformation.point
-                            child.pointer_event('drag', pointer, *point,
-                                button=button, **kwargs)
+            reg = self.dragging_children.get(pointer, {})
+            for button, child in reg.iteritems():
+                if child in self.children:
+                    with transformation.state:
+                        child.transform(transformation)
+                        point = transformation.point
+                        child.pointer_event('drag', pointer, *point,
+                            button=button, **kwargs)
             new_hovered_children = set()
             retval = None
-            for child, point, hit in _children_for_ptr(self.children, x, y, z):
+            for child, point, hit in _children_for_ptr(self.children):
                 if hit:
                     retval = child.pointer_event('motion', pointer, *point,
                         **kwargs)
@@ -340,7 +343,7 @@ class Layer(GraphicsObject):
             return retval
         elif kind == 'press':
             button = kwargs['button']
-            for child, point, hit in _children_for_ptr(self.children, x, y, z):
+            for child, point, hit in _children_for_ptr(self.children):
                 if hit:
                     ret = child.pointer_event(kind, pointer, *point, **kwargs)
                     if ret:
@@ -368,10 +371,10 @@ class DecorationLayer(Layer):
 
     Objects in this layer will not be interactive.
     """
-    def do_hit_test(self, transformation, **kwargs):
-        return ()
+    def hit_test(self, transformation, **kwargs):
+        return False
 
-    def pointer_event(*_ignore, **_everything):
+    def pointer_event(self, *_ignore, **_everything):
         pass
 
 
@@ -391,7 +394,7 @@ class Rectangle(GraphicsObject):
         gl.glVertexPointer(2, gl.GL_FLOAT, 0, self.vertices)
         gl.glDrawArrays(gl.GL_TRIANGLE_STRIP, 0, 4)
 
-    def hit_test(self, x, y, z):
+    def hit_test(self, x, y, _z):
         """Perform a hit test on the rectangle"""
         return 0 <= x < self.width and 0 <= y < self.height
 
@@ -424,7 +427,7 @@ class Sprite(GraphicsObject):
             )
         self.sprite.draw()
 
-    def hit_test(self, x, y, z):
+    def hit_test(self, x, y, _z):
         """Perform a hit test on this object. Uses the sprite size.
 
         Does not take e.g. alpha into account"""
@@ -548,6 +551,6 @@ class Text(GraphicsObject):
         See `size`"""
         return self.size[0]
 
-    def hit_test(self, x, y, z):
+    def hit_test(self, x, y, _z):
         """Perform a hit test on this object. Uses the bounding rectangle."""
         return 0 <= x < self.width and 0 <= y < self.height

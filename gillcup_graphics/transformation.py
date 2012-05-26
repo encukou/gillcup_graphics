@@ -7,6 +7,9 @@ needed.
 
 A graphic object's ``transform`` method takes a Transformation object and
 calls its ``translate``, ``scale``, ``rotate`` or ``premultiply`` methods.
+While ``premultiply`` is the most general, the other methods are more
+straightforward to use and often much faster.
+
 For drawing, a GlTransformation object, which will update the OpenGL state
 directly, is passed to the method. For hit tests and mouse events, a
 PointTransformation is used.
@@ -73,6 +76,10 @@ class BaseTransformation(object):
         raise NotImplementedError
 
     def translate(self, x=0, y=0, z=0):
+        """Change the transformatin to represent moving an object
+
+        The object is moved, without rotating, along the vector [x y z].
+        """
         self.premultiply((
                 1, 0, 0, 0,
                 0, 1, 0, 0,
@@ -81,6 +88,11 @@ class BaseTransformation(object):
             ))
 
     def rotate(self, angle, x=0, y=0, z=1):
+        """Change the transformatin to represent rotating an object
+
+        The object is rotated `angle` degrees along the axis specified by
+        the vector [x y z]. This must be an unit vector (i.e. x² + y² + z² = 1)
+        """
         if not angle:
             return
         c = cos(angle * deg_to_rad)
@@ -100,6 +112,11 @@ class BaseTransformation(object):
             ))
 
     def scale(self, x=1, y=1, z=1):
+        """Change the transformatin to represent scaling an object
+
+        The object is rotated `angle` degrees along the axis specified by
+        the vector [x y z]. This must be an unit vector (i.e. x² + y² + z² = 1)
+        """
         self.premultiply((
                 x, 0, 0, 0,
                 0, y, 0, 0,
@@ -134,7 +151,13 @@ class GlTransformation(BaseTransformation):
 
 
 class PointTransformation(BaseTransformation):
+    """Transformation for a single point
+
+    The ``point`` attribute corresponds to the vector given to the constructor
+    transformed by whatever transformation was applied to this object.
+    """
     def __init__(self, x, y, z):
+        super(PointTransformation, self).__init__()
         self.point = self.original_point = x, y, z
         self.stack = []
 
@@ -213,47 +236,11 @@ class PointTransformation(BaseTransformation):
             )
 
 
-class BaseMatrixTransformation(BaseTransformation):
+class MatrixTransformation(BaseTransformation):
     """A Transformation with a full, queryable result matrix.
-
-    The fastest implementation available will be exported
-    as MatrixTransformation.
-    """
-    def __len__(self):
-        return 16
-
-    def __getitem__(self, item):
-        """Get item. Supports (x, y) pairs or single integers.
-
-        Note that __len__ and __getitem__ are one variant of the iteration
-        protocol, so BaseMatrixTransformation supports iter() as well.
-        """
-        raise NotImplementedError
-
-    def transform_point(self, x=0, y=0, z=0):
-        """Return the given vector multiplied by this matrix
-
-        Returns a 3-element iterable
-        """
-        raise NotImplementedError
-
-    @property
-    def inverse(self):
-        """The inverse (matrix with the opposite effect) of this matrix.
-
-        N.B. Only works with transformation martices (ones where the last
-        column is identity)
-
-        Returns a 16-element iterable
-        """
-        raise NotImplementedError
-
-
-class TupleTransformation(BaseMatrixTransformation):
-    """Implementation that uses tuples. Slow.
     """
     def __init__(self):
-        super(TupleTransformation, self).__init__()
+        super(MatrixTransformation, self).__init__()
         self.matrix = self.identity
         self.stack = []
 
@@ -264,7 +251,15 @@ class TupleTransformation(BaseMatrixTransformation):
             0, 0, 0, 1,
         )
 
+    def __len__(self):
+        return 16
+
     def __getitem__(self, item):
+        """Get item. Supports (x, y) pairs or single integers.
+
+        Note that __len__ and __getitem__ are one variant of the iteration
+        protocol: MatrixTransformation supports iter() as well.
+        """
         try:
             col, row = item
         except TypeError:
@@ -322,6 +317,10 @@ class TupleTransformation(BaseMatrixTransformation):
         assert m[15] == 1
 
     def transform_point(self, x=0, y=0, z=0):
+        """Return the given vector multiplied by this matrix
+
+        Returns a 3-element iterable
+        """
         (m1_0, m1_1, m1_2, m1_3,
          m1_4, m1_5, m1_6, m1_7,
          m1_8, m1_9, m1_10, m1_11,
@@ -335,6 +334,13 @@ class TupleTransformation(BaseMatrixTransformation):
 
     @property
     def inverse(self):
+        """The inverse (matrix with the opposite effect) of this matrix.
+
+        N.B. Only works with transformation martices (ones where the last
+        column is identity)
+
+        Returns a 16-element iterable
+        """
         (i0, i1, i2, i3,
          i4, i5, i6, i7,
          i8, i9, i10, i11,
@@ -387,5 +393,3 @@ class TupleTransformation(BaseMatrixTransformation):
         m[14] = - (i12 * m[2] + i13 * m[6] + i14 * m[10])
 
         return m
-
-MatrixTransformation = TupleTransformation

@@ -38,26 +38,28 @@ def matrix_almost_equal(matrix, *args):
 
 def assert_identity(transformation):
     """Assert that the given transformation is an identity transformation"""
-    transformation._assert_matrix_equal_(
+    transformation.assert__matrix_equal(
         1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1,)
 
 
 class TestPointTransformation(PointTransformation):
-    def _assert_matrix_equal_(self, *values):
+    """A PointTransformation subclass"""
+    def assert__matrix_equal(self, *values):
+        """Make sure we're getting the right point back"""
         matrix = MatrixTransformation()
         matrix.premultiply(values)
-        print 'orig:', self.original_point
-        assert sequences_almost_equal(
-            self.point,
+        assert sequences_almost_equal(self.point,
             matrix.transform_point(*self.original_point))
 
 
 def pytest_generate_tests(metafunc):
+    """Generate some `transformation` funcargs to test with"""
     if "transformation" in metafunc.funcargnames:
         matrix_transformation = MatrixTransformation()
-        def _assert_matrix_equal_(*values):
+        def assert__matrix_equal(*values):
+            """Make sure we got the right matrix"""
             assert matrix_almost_equal(matrix_transformation, *values)
-        matrix_transformation._assert_matrix_equal_ = _assert_matrix_equal_
+        matrix_transformation.assert__matrix_equal = assert__matrix_equal
 
         points = [
                 (0, 0, 0),
@@ -96,7 +98,7 @@ def test_identity(transformation):
 def test_translate(transformation):
     """Test general translation works"""
     transformation.translate(5, 6, 7)
-    transformation._assert_matrix_equal_(
+    transformation.assert__matrix_equal(
             1, 0, 0, 0,
             0, 1, 0, 0,
             0, 0, 1, 0,
@@ -107,14 +109,14 @@ def test_translate(transformation):
 def test_translate_x(transformation):
     """Test x-axis translation works"""
     transformation.translate(4)
-    transformation._assert_matrix_equal_(
+    transformation.assert__matrix_equal(
             1, 0, 0, 0,
             0, 1, 0, 0,
             0, 0, 1, 0,
             4, 0, 0, 1,
         )
     transformation.translate(x=4)
-    transformation._assert_matrix_equal_(
+    transformation.assert__matrix_equal(
             1, 0, 0, 0,
             0, 1, 0, 0,
             0, 0, 1, 0,
@@ -125,14 +127,14 @@ def test_translate_x(transformation):
 def test_translate_y(transformation):
     """Test y-axis translation works"""
     transformation.translate(0, 4)
-    transformation._assert_matrix_equal_(
+    transformation.assert__matrix_equal(
             1, 0, 0, 0,
             0, 1, 0, 0,
             0, 0, 1, 0,
             0, 4, 0, 1,
         )
     transformation.translate(y=4)
-    transformation._assert_matrix_equal_(
+    transformation.assert__matrix_equal(
             1, 0, 0, 0,
             0, 1, 0, 0,
             0, 0, 1, 0,
@@ -143,14 +145,14 @@ def test_translate_y(transformation):
 def test_translate_z(transformation):
     """Test z-axis translation works"""
     transformation.translate(0, 0, 4)
-    transformation._assert_matrix_equal_(
+    transformation.assert__matrix_equal(
             1, 0, 0, 0,
             0, 1, 0, 0,
             0, 0, 1, 0,
             0, 0, 4, 1,
         )
     transformation.translate(z=4)
-    transformation._assert_matrix_equal_(
+    transformation.assert__matrix_equal(
             1, 0, 0, 0,
             0, 1, 0, 0,
             0, 0, 1, 0,
@@ -161,21 +163,21 @@ def test_translate_z(transformation):
 def test_rotate_z(transformation):
     """Test z-axis rotation works"""
     transformation.rotate(180)
-    transformation._assert_matrix_equal_(
+    transformation.assert__matrix_equal(
             -1, 0, 0, 0,
             0, -1, 0, 0,
             0, 0, 1, 0,
             0, 0, 0, 1,
         )
     transformation.rotate(90)
-    transformation._assert_matrix_equal_(
+    transformation.assert__matrix_equal(
             0, -1, 0, 0,
             1, 0, 0, 0,
             0, 0, 1, 0,
             0, 0, 0, 1,
         )
     transformation.rotate(45)
-    transformation._assert_matrix_equal_(
+    transformation.assert__matrix_equal(
             math.sqrt(2) / 2, -math.sqrt(2) / 2, 0, 0,
             math.sqrt(2) / 2, math.sqrt(2) / 2, 0, 0,
             0, 0, 1, 0,
@@ -186,21 +188,21 @@ def test_rotate_z(transformation):
 def test_rotate_y(transformation):
     """Test y-axis rotation works"""
     transformation.rotate(180, 0, 1, 0)
-    transformation._assert_matrix_equal_(
+    transformation.assert__matrix_equal(
             -1, 0, 0, 0,
             0, 1, 0, 0,
             0, 0, -1, 0,
             0, 0, 0, 1,
         )
     transformation.rotate(90, 0, 1, 0)
-    transformation._assert_matrix_equal_(
+    transformation.assert__matrix_equal(
             0, 0, 1, 0,
             0, 1, 0, 0,
             -1, 0, 0, 0,
             0, 0, 0, 1,
         )
     transformation.rotate(45, 0, 1, 0)
-    transformation._assert_matrix_equal_(
+    transformation.assert__matrix_equal(
             math.sqrt(2) / 2, 0, math.sqrt(2) / 2, 0,
             0, 1, 0, 0,
             -math.sqrt(2) / 2, 0, math.sqrt(2) / 2, 0,
@@ -211,7 +213,7 @@ def test_rotate_y(transformation):
 def test_rotate_arbitrary(transformation):
     """Test general rotation works"""
     transformation.rotate(45, 1, 0.5, 1)
-    transformation._assert_matrix_equal_(
+    transformation.assert__matrix_equal(
             1, 0.8535534, -0.06066, 0,
             -0.56066, 0.78033, 0.8535534, 0,
             0.6464466, -0.56066, 1, 0,
@@ -222,7 +224,7 @@ def test_rotate_arbitrary(transformation):
 def test_scale(transformation):
     """Test general scaling works"""
     transformation.scale(5, 6, 7)
-    transformation._assert_matrix_equal_(
+    transformation.assert__matrix_equal(
             5, 0, 0, 0,
             0, 6, 0, 0,
             0, 0, 7, 0,
@@ -233,14 +235,14 @@ def test_scale(transformation):
 def test_scale_x(transformation):
     """Test x-axis scaling works"""
     transformation.scale(4)
-    transformation._assert_matrix_equal_(
+    transformation.assert__matrix_equal(
             4, 0, 0, 0,
             0, 1, 0, 0,
             0, 0, 1, 0,
             0, 0, 0, 1,
         )
     transformation.scale(x=4)
-    transformation._assert_matrix_equal_(
+    transformation.assert__matrix_equal(
             16, 0, 0, 0,
             0, 1, 0, 0,
             0, 0, 1, 0,
@@ -251,14 +253,14 @@ def test_scale_x(transformation):
 def test_scale_y(transformation):
     """Test y-axis scaling works"""
     transformation.scale(1, 4)
-    transformation._assert_matrix_equal_(
+    transformation.assert__matrix_equal(
             1, 0, 0, 0,
             0, 4, 0, 0,
             0, 0, 1, 0,
             0, 0, 0, 1,
         )
     transformation.scale(y=4)
-    transformation._assert_matrix_equal_(
+    transformation.assert__matrix_equal(
             1, 0, 0, 0,
             0, 16, 0, 0,
             0, 0, 1, 0,
@@ -269,14 +271,14 @@ def test_scale_y(transformation):
 def test_scale_z(transformation):
     """Test z-axis scaling works"""
     transformation.scale(1, 1, 4)
-    transformation._assert_matrix_equal_(
+    transformation.assert__matrix_equal(
             1, 0, 0, 0,
             0, 1, 0, 0,
             0, 0, 4, 0,
             0, 0, 0, 1,
         )
     transformation.scale(z=4)
-    transformation._assert_matrix_equal_(
+    transformation.assert__matrix_equal(
             1, 0, 0, 0,
             0, 1, 0, 0,
             0, 0, 16, 0,
@@ -315,7 +317,7 @@ def test_premultiply_1(transformation):
             12, 11, 10, 1,
         ]
     transformation.premultiply(values)
-    transformation._assert_matrix_equal_(*values)
+    transformation.assert__matrix_equal(*values)
 
 
 def test_premultiply_rotate_translate(transformation):
@@ -332,7 +334,7 @@ def test_premultiply_rotate_translate(transformation):
             0, 0, 1, 0,
             3, 4, 5, 1,
         ))
-    transformation._assert_matrix_equal_(
+    transformation.assert__matrix_equal(
             0, 0, 1, 0,
             0, 1, 0, 0,
             1, 0, 0, 0,
@@ -354,7 +356,7 @@ def test_premultiply_random(transformation):
             484, 286, 594, 0,
             327, 158, 564, 1,
         ))
-    transformation._assert_matrix_equal_(
+    transformation.assert__matrix_equal(
             678402, 1146252, 735716, 0,
             362979, 524487, 409292, 0,
             504504, 763026, 521928, 0,

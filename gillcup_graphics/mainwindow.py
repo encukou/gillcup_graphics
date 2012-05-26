@@ -38,7 +38,8 @@ class Window(pyglet.window.Window):  # pylint: disable=W0223
         self.on_draw()
         self.flip()
 
-    def on_draw(self):  # pylint: disable=W0221
+    # pylint: disable=W0221
+    def on_draw(self):
         gl.glClearColor(0, 0, 0, 0)
         self.clear()
         gl.glEnable(gl.GL_LINE_SMOOTH)
@@ -50,41 +51,50 @@ class Window(pyglet.window.Window):  # pylint: disable=W0223
         transformation.reset()
         self.layer.do_draw(window=self, transformation=transformation)
 
+    # pylint: disable=W0221
     def on_resize(self, width, height):
         super(Window, self).on_resize(width, height)
         layer = self.layer
         layer.scale = width / layer.width, height / layer.height, 1
 
+    # pylint: disable=W0221
     def on_mouse_motion(self, x, y, dx, dy):
         self.pointer_event('motion', 'main', x, y, dx=dx, dy=dy)
 
+    # pylint: disable=W0221
     def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
         self.pointer_event('motion', 'main', x, y, dx=dx, dy=dy,
             buttons=buttons, modifiers=modifiers)
 
+    # pylint: disable=W0221
     def on_mouse_press(self, x, y, button, modifiers):
         self.pointer_event('press', 'main', x, y,
             button=button, modifiers=modifiers)
 
+    # pylint: disable=W0221
     def on_mouse_release(self, x, y, button, modifiers):
         self.pointer_event('release', 'main', x, y,
             button=button, modifiers=modifiers)
 
+    # pylint: disable=W0221
     def on_mouse_leave(self, x, y):
         self.pointer_event('leave', 'main', x, y)
 
+    # pylint: disable=W0221
     def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
         self.pointer_event('scroll', 'main', x, y,
             scroll_x=scroll_x, scroll_y=scroll_y)
 
     def pointer_event(self, kind, pointer, x, y, **kwargs):
+        """Fire a pointer event on the client layer"""
         transformation = PointTransformation(x, y, 0)
         layer = self.layer
         with transformation.state:
             layer.transform(transformation)
-            layer.pointer_event(kind, pointer, x, y, 0,
+            layer.pointer_event(kind, pointer,
                 transformation=transformation, **kwargs)
 
+    # pylint: disable=W0221
     def on_key_press(self, key, modifiers):
         self.layer.keyboard_event('press', 'main',
             key=key, modifiers=modifiers)
