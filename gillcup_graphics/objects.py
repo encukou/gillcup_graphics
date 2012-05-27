@@ -95,7 +95,7 @@ class GraphicsObject(object):
         docstring="""The object's natural size
 
         The individual components are in the ``width`` and ``height``
-         attributes.""")
+        attributes.""")
     rotation = gillcup.AnimatedProperty(0,
         docstring="""Rotation about the object's anchor""")
     relative_anchor = properties.VectorProperty(3,
@@ -229,7 +229,7 @@ class GraphicsObject(object):
     def pointer_event(self, event_type, pointer, x, y, z, **kwargs):
         """Handle a pointer (mouse) event
 
-        Dispatches to on_pointer_<event> methods. See :cls:`Layer` for the
+        Dispatches to on_pointer_<event> methods. See :class:`Layer` for the
         available handlers.
         """
         try:

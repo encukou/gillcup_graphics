@@ -264,4 +264,7 @@ man_pages = [
 
 
 # Configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {'python': ('http://docs.python.org/', None)}
+intersphinx_mapping = {
+        'python': ('http://docs.python.org/', None),
+        'gillcup': ('http://gillcup.readthedocs.org/en/latest/', None),
+    }

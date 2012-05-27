@@ -23,13 +23,25 @@ class Window(pyglet.window.Window):  # pylint: disable=W0223
 
     :param layer: The layer to show. Its
         :attr:`~gillcup_graphics.GraphicsObject.scale` will be automatically
-        adjusted to fit the window.
+        adjusted to fit the window (and re-adjusted when the window's size
+        changes).
 
     Other arguments are passed to Pyglet's window constructor.
+    The most common arguments to pass are:
+
+    :param width: Width of the window
+    :param height: Height of the window
+    :param caption: Caption that appears in the title, taskbar, etc.
+    :param fullscreen: If true, the window will cover the screen
+    :param resizable: If true, the user can resize the window
+
+    Other arguments are explained in the `Pyglet documentation
+    <http://www.pyglet.org/doc/api/pyglet.window.Window-class.html#__init__>`_.
     """
     def __init__(self, layer, *args, **kwargs):
-        super(Window, self).__init__(*args, **kwargs)
         self.layer = layer
+        kwargs.setdefault('caption', 'Gillcup Window')
+        super(Window, self).__init__(*args, **kwargs)
         self.on_resize(self.width, self.height)
 
     def manual_draw(self):
