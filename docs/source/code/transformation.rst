@@ -17,6 +17,11 @@ gillcup_graphics.transformation
 
 .. autoclass:: gillcup_graphics.transformation.GlTransformation
 
+.. autoclass:: gillcup_graphics.transformation.PointTransformation
+
 .. autoclass:: gillcup_graphics.transformation.MatrixTransformation
+
+    .. automethod:: gillcup_graphics.transformation.MatrixTransformation.__len__
+    .. automethod:: gillcup_graphics.transformation.MatrixTransformation.__getitem__
 
     .. automethod:: gillcup_graphics.transformation.MatrixTransformation.transform_point

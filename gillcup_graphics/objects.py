@@ -113,7 +113,10 @@ class GraphicsObject(object):
     relative_anchor_x, relative_anchor_y, relative_anchor_z = relative_anchor
 
     def set_animated_properties(self, kwargs):
-        """Initializes animated properties with keyword arguments"""
+        """Initializes animated properties with keyword arguments
+
+        Raises an error if any extra arguments are found.
+        """
         unknown = []
         for name, value in kwargs.items():
             try:
@@ -175,7 +178,7 @@ class GraphicsObject(object):
             to modify in-place.
 
         No :meth:`~gillcup_graphics.transformation.BaseTransformation.push`
-        or :meth:`~gillcup_graphics.transformation.BaseTransformation.pull`
+        or :meth:`~gillcup_graphics.transformation.BaseTransformation.pop`
         calls should be made, only transformations.
         """
         transformation.translate(*self.position)

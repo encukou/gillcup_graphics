@@ -25,15 +25,11 @@ from the gillcup_graphics package:
     (from :mod:`gillcup_graphics.objects`)
 * :class:`~gillcup_graphics.Text` \
     (from :mod:`gillcup_graphics.objects`)
-* :class:`~gillcup_graphics.Text` \
-    (from :mod:`gillcup_graphics.objects`)
-* :class:`~gillcup_graphics.EffectLayer` \
-    (from :mod:`gillcup_graphics.effectlayer`)
 * :class:`~gillcup_graphics.Window` \
     (from :mod:`gillcup_graphics.mainwindow`)
 * :class:`~gillcup_graphics.RealtimeClock` \
     (from :mod:`gillcup_graphics.mainwindow`)
-* :class:`~gillcup_graphics.run` \
+* :func:`~gillcup_graphics.run` \
     (from :mod:`gillcup_graphics.mainwindow`)
 """
 

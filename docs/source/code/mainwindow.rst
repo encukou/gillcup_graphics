@@ -9,6 +9,6 @@ gillcup_graphics.mainwindow
 
 .. autoclass:: gillcup_graphics.RealtimeClock
 
-.. function:: gillcup_graphics.run
+.. py:function:: gillcup_graphics.run()
 
     Runs the Pyglet main loop. Alias for :func:`pyglet.app.run`.

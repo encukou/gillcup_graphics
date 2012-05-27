@@ -252,10 +252,11 @@ class MatrixTransformation(BaseTransformation):
         )
 
     def __len__(self):
+        """Return `16`, the size of the matrix."""
         return 16
 
     def __getitem__(self, item):
-        """Get item. Supports (x, y) pairs or single integers.
+        """Get a number from the matrix. Supports (x, y) pairs, or single ints.
 
         Note that __len__ and __getitem__ are one variant of the iteration
         protocol: MatrixTransformation supports iter() as well.
