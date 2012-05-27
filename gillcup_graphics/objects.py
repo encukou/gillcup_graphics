@@ -66,7 +66,6 @@ class GraphicsObject(object):
         self.parent = None
         self.reparent(parent, to_back)
         self.name = name
-        self.children = ()
         self.dead = False
         if 'anchor' not in kwargs:
             RelativeAnchor(self).apply_to(self, 'anchor')
@@ -199,9 +198,6 @@ class GraphicsObject(object):
         """
         self.dead = True
         self.parent = None
-        for child in self.children:
-            if child.parent is self:
-                child.die()
 
     def reparent(self, new_parent, to_back=False):
         """Set a new parent
@@ -249,6 +245,17 @@ class Layer(GraphicsObject):
     def __init__(self, parent=None, **kwargs):
         super(Layer, self).__init__(parent, **kwargs)
         self.children = []
+
+    def die(self):
+        """Destroy this object
+
+        Sets up to detach from the parent on the next frame, and calls die()
+        on all children.
+        """
+        super(Layer, self).die()
+        for child in self.children:
+            if child.parent is self:
+                child.die()
 
     def do_hit_test(self, transformation, **kwargs):
         if not self.is_hidden():
