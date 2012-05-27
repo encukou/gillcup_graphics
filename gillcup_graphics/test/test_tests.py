@@ -59,13 +59,3 @@ def test_sequences_almost_equal():
     assert sequences_almost_equal([2, 2], [2, 2.0000001])
     assert not sequences_almost_equal([1], [1.1])
     assert not sequences_almost_equal([1], [1, 1])
-
-
-def test_matrix_almost_equal():
-    """Test the matrix_almost_equal helper"""
-    assert matrix_almost_equal([1], 1)
-    assert matrix_almost_equal([1], 1.0000001)
-    assert matrix_almost_equal([1, 2], 1, 2)
-    assert matrix_almost_equal([2, 2], 2, 2.0000001)
-    assert not matrix_almost_equal([1], 1.1)
-    assert not matrix_almost_equal([1], 1, 1)

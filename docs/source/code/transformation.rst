@@ -17,13 +17,6 @@ gillcup_graphics.transformation
 
 .. autoclass:: gillcup_graphics.transformation.GlTransformation
 
-.. autoclass:: gillcup_graphics.transformation.TupleTransformation
+.. autoclass:: gillcup_graphics.transformation.MatrixTransformation
 
-    .. automethod:: gillcup_graphics.transformation.TupleTransformation.transform_point
-
-.. class:: gillcup_graphics.transformation.MatrixTransformation
-
-    Currently an alias of
-    :class:`gillcup_graphics.transformation.TupleTransformation`
-
-    May use a faster backend, such as Numpy if available, in the future
+    .. automethod:: gillcup_graphics.transformation.MatrixTransformation.transform_point

@@ -1,17 +1,30 @@
-
+# Encoding: UTF-8
 """Transformation objects
 
-A graphic object's transform method takes a Transformation object and updates
-it with its transformation. For drawing, use a GlTransformation object, which
-will update the OpenGL state directly. For hit tests, use a
-MatrixTransformation object.
+The Transformation interface is implemented by several classes that have used
+whenever info about graphics objects' position, scale, rotation, etc. are
+needed.
+
+A graphic object's ``transform`` method takes a Transformation object and
+calls its ``translate``, ``scale``, ``rotate`` or ``premultiply`` methods.
+While ``premultiply`` is the most general, the other methods are more
+straightforward to use and often much faster.
+
+For drawing, a GlTransformation object, which will update the OpenGL state
+directly, is passed to the method. For hit tests and mouse events, a
+PointTransformation is used.
+
+Each transformation object implements a stack modeled on the OpenGL matrix
+stack: any state can be saved with ``push``, and the last-pushed state
+restored with ``pop``. The ``state`` context manager simplifies working with
+the stack.
 """
 
 from __future__ import division
 
-# The more crazy matrix stuff is partly based on the GameObjects library by
-#  Will McGugan, which is today, unfortunately, without a licence, but
-#  the author wishes it to be used without restrictions:
+# Some of the more crazy matrix stuff is based on the GameObjects library by
+#  Will McGugan, which is today, unfortunately, without an official licence,
+#  but the author wishes it to be used without restrictions:
 # http://www.willmcgugan.com/blog/tech/2007/6/7/game-objects-commandments/
 #   #comment146
 
@@ -55,24 +68,61 @@ class BaseTransformation(object):
         """Restore matrix saved by the corresponding push() call"""
         raise NotImplementedError
 
-    def translate(self, x=0, y=0, z=0):
-        """Premultiply a translation matrix to self, in situ"""
-        raise NotImplementedError
-
-    def rotate(self, angle, x=0, y=0, z=1):
-        """Premultiply a rotation matrix to self, in situ"""
-        raise NotImplementedError
-
-    def scale(self, x=1, y=1, z=1):
-        """Premultiply a scaling matrix to self, in situ"""
-        raise NotImplementedError
-
     def premultiply(self, values):
         """Premultiply the given matrix to self, in situ
 
         :param values: An iterable of 16 matrix elements in row-major (C) order
         """
         raise NotImplementedError
+
+    def translate(self, x=0, y=0, z=0):
+        """Change the transformatin to represent moving an object
+
+        The object is moved, without rotating, along the vector [x y z].
+        """
+        self.premultiply((
+                1, 0, 0, 0,
+                0, 1, 0, 0,
+                0, 0, 1, 0,
+                x, y, z, 1,
+            ))
+
+    def rotate(self, angle, x=0, y=0, z=1):
+        """Change the transformatin to represent rotating an object
+
+        The object is rotated `angle` degrees along the axis specified by
+        the vector [x y z]. This must be an unit vector (i.e. x² + y² + z² = 1)
+        """
+        if not angle:
+            return
+        c = cos(angle * deg_to_rad)
+        s = sin(angle * deg_to_rad)
+        d = 1 - c
+        xs = x * s
+        ys = y * s
+        zs = z * s
+        xd = x * d
+        yd = y * d
+        zd = z * d
+        self.premultiply((
+                x * xd + c, y * xd + zs, x * zd - ys, 0,
+                x * yd - zs, y * yd + c, y * zd + xs, 0,
+                x * zd + ys, y * zd - xs, z * zd + c, 0,
+                0, 0, 0, 1,
+            ))
+
+    def scale(self, x=1, y=1, z=1):
+        """Change the transformatin to represent scaling an object
+
+        The object is rotated `angle` degrees along the axis specified by
+        the vector [x y z]. This must be an unit vector (i.e. x² + y² + z² = 1)
+        """
+        self.premultiply((
+                x, 0, 0, 0,
+                0, y, 0, 0,
+                0, 0, z, 0,
+                0, 0, 0, 1,
+            ))
 
 
 class GlTransformation(BaseTransformation):
@@ -100,8 +150,94 @@ class GlTransformation(BaseTransformation):
         gl.glMultMatrixf(*values)
 
 
-class TupleTransformation(BaseTransformation):
-    """Implementation that uses tuples. Slow.
+class PointTransformation(BaseTransformation):
+    """Transformation for a single point
+
+    The ``point`` attribute corresponds to the vector given to the constructor
+    transformed by whatever transformation was applied to this object.
+    """
+    def __init__(self, x, y, z):
+        super(PointTransformation, self).__init__()
+        self.point = self.original_point = x, y, z
+        self.stack = []
+
+    def reset(self):
+        self.point = self.original_point
+
+    def push(self):
+        self.stack.append(self.point)
+
+    def pop(self):
+        self.point = self.stack.pop()
+
+    def translate(self, x=0, y=0, z=0):
+        px, py, pz = self.point
+        self.point = px - x, py - y, pz - z
+
+    def scale(self, x=1, y=1, z=1):
+        px, py, pz = self.point
+        self.point = px / x, py / y, pz / z
+
+    def rotate(self, angle, x=0, y=0, z=1):
+        if not angle:
+            return
+        elif x == y == 0 and z == 1:
+            # Cheaper rotation in the x-y axis
+            c = cos(angle * deg_to_rad)
+            s = sin(angle * deg_to_rad)
+            denom = c * c + s * s
+            pt_x, pt_y, pt_z = self.point
+            self.point = (
+                    (pt_y * s) / denom + (pt_x * c) / denom,
+                    (pt_y * c) / denom - (pt_x * s) / denom,
+                    pt_z)
+        else:
+            super(PointTransformation, self).rotate(angle, x, y, z)
+
+    def premultiply(self, values):
+        (xx, yx, zx, dummy,
+         xy, yy, zy, dummy,
+         xz, yz, zz, dummy,
+         x1, y1, z1, dummy) = values
+        x, y, z = self.point
+
+        # calculate the dot product, [x y z 1] · invert(matrix)
+        # Don't we all love matrices?
+        self.point = (
+                (-xy * (yz * z1 - y1 * zz) + yy * (xz * z1 - x1 * zz) -
+                (xz * y1 - x1 * yz) * zy) / (xx * (yy * zz - yz * zy) +
+                yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx) +
+                (x * (yy * zz - yz * zy)) / (xx * (yy * zz - yz * zy) +
+                yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx) +
+                (y * (xz * zy - xy * zz)) / (xx * (yy * zz - yz * zy) +
+                yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx) +
+                ((xy * yz - xz * yy) * z) / (xx * (yy * zz - yz * zy) +
+                yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx),
+
+                (xx * (yz * z1 - y1 * zz) - yx * (xz * z1 - x1 * zz) +
+                (xz * y1 - x1 * yz) * zx) / (xx * (yy * zz - yz * zy) +
+                yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx) +
+                (x * (yz * zx - yx * zz)) / (xx * (yy * zz - yz * zy) +
+                yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx) +
+                (y * (xx * zz - xz * zx)) / (xx * (yy * zz - yz * zy) +
+                yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx) +
+                ((xz * yx - xx * yz) * z) / (xx * (yy * zz - yz * zy) +
+                yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx),
+
+                (-xx * (yy * z1 - y1 * zy) + yx * (xy * z1 - x1 * zy) -
+                (xy * y1 - x1 * yy) * zx) / (xx * (yy * zz - yz * zy) +
+                yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx) +
+                (x * (yx * zy - yy * zx)) / (xx * (yy * zz - yz * zy) +
+                yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx) +
+                (y * (xy * zx - xx * zy)) / (xx * (yy * zz - yz * zy) +
+                yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx) +
+                ((xx * yy - xy * yx) * z) / (xx * (yy * zz - yz * zy) +
+                yx * (xz * zy - xy * zz) + (xy * yz - xz * yy) * zx),
+            )
+
+
+class MatrixTransformation(BaseTransformation):
+    """A Transformation with a full, queryable result matrix.
     """
     def __init__(self):
         super(MatrixTransformation, self).__init__()
@@ -119,6 +255,11 @@ class TupleTransformation(BaseTransformation):
         return 16
 
     def __getitem__(self, item):
+        """Get item. Supports (x, y) pairs or single integers.
+
+        Note that __len__ and __getitem__ are one variant of the iteration
+        protocol: MatrixTransformation supports iter() as well.
+        """
         try:
             col, row = item
         except TypeError:
@@ -134,39 +275,6 @@ class TupleTransformation(BaseTransformation):
 
     def pop(self):
         self.matrix = self.stack.pop()
-
-    def translate(self, x=0, y=0, z=0):
-        self.premultiply((
-                1, 0, 0, 0,
-                0, 1, 0, 0,
-                0, 0, 1, 0,
-                x, y, z, 1,
-            ))
-
-    def rotate(self, angle, x=0, y=0, z=1):
-        c = cos(angle * deg_to_rad)
-        s = sin(angle * deg_to_rad)
-        d = 1 - c
-        xs = x * s
-        ys = y * s
-        zs = z * s
-        xd = x * d
-        yd = y * d
-        zd = z * d
-        self.premultiply((
-                x * xd + c, y * xd + zs, x * zd - ys, 0,
-                x * yd - zs, y * yd + c, y * zd + xs, 0,
-                x * zd + ys, y * zd - xs, z * zd + c, 0,
-                0, 0, 0, 1,
-            ))
-
-    def scale(self, x=1, y=1, z=1):
-        self.premultiply((
-                x, 0, 0, 0,
-                0, y, 0, 0,
-                0, 0, z, 0,
-                0, 0, 0, 1,
-            ))
 
     def premultiply(self, values):
         (m1_0, m1_1, m1_2, m1_3,
@@ -202,9 +310,17 @@ class TupleTransformation(BaseTransformation):
                 m2_12 * m1_2 + m2_13 * m1_6 + m2_14 * m1_10 + m2_15 * m1_14,
                 m2_12 * m1_3 + m2_13 * m1_7 + m2_14 * m1_11 + m2_15 * m1_15,
             )
+        m = self.matrix
+        assert m[3] == 0
+        assert m[7] == 0
+        assert m[11] == 0
+        assert m[15] == 1
 
     def transform_point(self, x=0, y=0, z=0):
-        """Return the given vector multiplied by this matrix"""
+        """Return the given vector multiplied by this matrix
+
+        Returns a 3-element iterable
+        """
         (m1_0, m1_1, m1_2, m1_3,
          m1_4, m1_5, m1_6, m1_7,
          m1_8, m1_9, m1_10, m1_11,
@@ -220,9 +336,11 @@ class TupleTransformation(BaseTransformation):
     def inverse(self):
         """The inverse (matrix with the opposite effect) of this matrix.
 
-        N.B. Only works with transformation martices (last column is identity)
-        """
+        N.B. Only works with transformation martices (ones where the last
+        column is identity)
 
+        Returns a 16-element iterable
+        """
         (i0, i1, i2, i3,
          i4, i5, i6, i7,
          i8, i9, i10, i11,
@@ -274,6 +392,4 @@ class TupleTransformation(BaseTransformation):
         m[13] = - (i12 * m[1] + i13 * m[5] + i14 * m[9])
         m[14] = - (i12 * m[2] + i13 * m[6] + i14 * m[10])
 
-        return tuple(m)
-
-MatrixTransformation = TupleTransformation
+        return m
