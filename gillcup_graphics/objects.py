@@ -229,19 +229,27 @@ class GraphicsObject(object):
                 new_parent.children.append(self)
             self.parent = new_parent
 
-    def pointer_event(self, type, pointer, x, y, z, **kwargs):
+    def pointer_event(self, event_type, pointer, x, y, z, **kwargs):
         """Handle a pointer (mouse) event, return true if it as handled
 
         :param type: Can be 'motion', 'press', 'release', 'leave', 'drag',
         or 'scroll'
 
-        For 'press', return True (i.e. the bool value, not just any true-ish
-        object) to "claim" the click/drag operation. Only the "claiming" object
-        will get subsequent drag & release events.
+        For 'press', return true to "claim" the click/drag operation.
+        Only the "claiming" object will get subsequent drag & release events.
 
         For 'motion', return True  stop the event from propegating to items
-        underneath. (This won't prevent later "leave" events)
+        underneath, and to register for a 'leave' event.
         """
+        try:
+            handler = getattr(self, 'on_pointer_' + event_type)
+        except AttributeError:
+            return self.pointer_event_default_handler(event_type, pointer,
+                x, y, z, **kwargs)
+        else:
+            return handler(pointer, x, y, z, **kwargs)
+
+    def pointer_event_default_handler(self, *args, **kwargs):
         pass
 
     def keyboard_event(self, type, keyboard, **kwargs):
@@ -288,82 +296,96 @@ class Layer(GraphicsObject):
                     )
             ]
 
+    @staticmethod
+    def _hit_test_generator(children, transformation):
+        """Yield (child, child_point, hit_test_succesful) triples
 
-    def pointer_event(self, kind, pointer, **kwargs):
-        transformation = kwargs['transformation']
-        toplevel = 'global_point' not in kwargs
-        if toplevel:
-            global_point = kwargs['global_point'] = transformation.point
-        else:
-            global_point = kwargs['global_point']
-        def _children_for_ptr(children):
-            # CAREFUL! Yield inside a transformation.state context!
-            for child in reversed(children):
-                with transformation.state:
+        CAREFUL! The yield is inside a transformation.state context!
+        """
+        for child in reversed(children):
+            with transformation.state:
+                try:
+                    child.transform(transformation)
+                except ZeroDivisionError:
+                    yield child, (-1, -1, -1), None
+                else:
                     try:
-                        child.transform(transformation)
-                    except ZeroDivisionError:
+                        point = transformation.point
+                    except ValueError:
                         yield child, (-1, -1, -1), None
                     else:
-                        try:
-                            point = transformation.point
-                        except ValueError:
-                            yield child, (-1, -1, -1), None
-                        else:
-                            hit = child.hit_test(*point)
-                            yield child, point, hit
+                        hit = child.hit_test(*point)
+                        yield child, point, hit
 
-        if kind == 'leave':
-            children = list(self.hovered_children.get(pointer, ()))
-            for child, point, hit in _children_for_ptr(children):
-                child.pointer_event('leave', pointer, *point, **kwargs)
-            self.hovered_children.pop(pointer, None)
-        elif kind == 'motion':
-            reg = self.dragging_children.get(pointer, {})
-            for button, child in reg.iteritems():
-                if child in self.children:
-                    with transformation.state:
-                        child.transform(transformation)
-                        point = transformation.point
-                        child.pointer_event('drag', pointer, *point,
-                            button=button, **kwargs)
-            new_hovered_children = set()
-            retval = None
-            for child, point, hit in _children_for_ptr(self.children):
-                if hit:
-                    retval = child.pointer_event('motion', pointer, *point,
+    def on_pointer_leave(self, pointer, *args, **kwargs):
+        transformation = kwargs['transformation']
+        children = list(self.hovered_children.get(pointer, ()))
+        generator = self._hit_test_generator(children, transformation)
+        for child, point, hit in generator:
+            child.pointer_event('leave', pointer, *point, **kwargs)
+        self.hovered_children.pop(pointer, None)
+
+    def on_pointer_motion(self, pointer, *args, **kwargs):
+        transformation = kwargs['transformation']
+        reg = self.dragging_children.get(pointer, {})
+        for button, child in reg.iteritems():
+            if child in self.children:
+                with transformation.state:
+                    child.transform(transformation)
+                    point = transformation.point
+                    child.pointer_event('drag', pointer, *point, button=button,
                         **kwargs)
-                    new_hovered_children.add(child)
-                    if retval:
-                        break
-            hovered = self.hovered_children.get(pointer, set())
-            for child in hovered - new_hovered_children:
-                child.pointer_event('leave', pointer, *point, **kwargs)
-            self.hovered_children[pointer] = new_hovered_children
-            return retval
-        elif kind == 'press':
-            button = kwargs['button']
-            for child, point, hit in _children_for_ptr(self.children):
-                if hit:
-                    ret = child.pointer_event(kind, pointer, *point, **kwargs)
-                    if ret:
-                        self.dragging_children[pointer][button] = child
-                        return ret
-        elif kind == 'release':
-            button = kwargs['button']
-            try:
-                child = self.dragging_children[pointer][button]
-            except KeyError:
-                pass
-            else:
-                if child in self.children:
-                    with transformation.state:
-                        child.transform(transformation)
-                        point = transformation.point
-                        child.pointer_event(kind, pointer, *point, **kwargs)
-                del self.dragging_children[pointer][button]
-                if not self.dragging_children[pointer]:
-                    del self.dragging_children[pointer]
+        new_hovered_children = set()
+        retval = None
+        generator = self._hit_test_generator(self.children, transformation)
+        for child, point, hit in generator:
+            if hit:
+                retval = child.pointer_event('motion', pointer, *point,
+                    **kwargs)
+                new_hovered_children.add(child)
+                if retval:
+                    break
+        hovered = self.hovered_children.get(pointer, set())
+        for child in hovered - new_hovered_children:
+            child.pointer_event('leave', pointer, *point, **kwargs)
+        self.hovered_children[pointer] = new_hovered_children
+        return retval
+
+    def on_pointer_press(self, pointer, *args, **kwargs):
+        transformation = kwargs['transformation']
+        button = kwargs['button']
+        generator = self._hit_test_generator(self.children, transformation)
+        for child, point, hit in generator:
+            if hit:
+                ret = child.pointer_event('press', pointer, *point, **kwargs)
+                if ret:
+                    self.dragging_children[pointer][button] = child
+                    return ret
+
+    def on_pointer_release(self, pointer, *args, **kwargs):
+        transformation = kwargs['transformation']
+        button = kwargs['button']
+        try:
+            child = self.dragging_children[pointer][button]
+        except KeyError:
+            pass
+        else:
+            if child in self.children:
+                with transformation.state:
+                    child.transform(transformation)
+                    point = transformation.point
+                    child.pointer_event('release', pointer, *point, **kwargs)
+            del self.dragging_children[pointer][button]
+            if not self.dragging_children[pointer]:
+                del self.dragging_children[pointer]
+
+    def pointer_event_default_handler(self, event_type, *args, **kwargs):
+        transformation = kwargs['transformation']
+        generator = self._hit_test_generator(self.children, transformation)
+        for child, point, hit in generator:
+            retval = child.pointer_event(event_type, pointer, *args, **kwargs)
+            if retval:
+                return retval
 
 
 class DecorationLayer(Layer):

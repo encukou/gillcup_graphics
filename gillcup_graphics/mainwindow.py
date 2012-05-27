@@ -91,7 +91,7 @@ class Window(pyglet.window.Window):  # pylint: disable=W0223
         layer = self.layer
         with transformation.state:
             layer.transform(transformation)
-            layer.pointer_event(kind, pointer,
+            layer.pointer_event(kind, pointer, x, y, 0,
                 transformation=transformation, **kwargs)
 
     # pylint: disable=W0221
