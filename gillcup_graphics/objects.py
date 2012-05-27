@@ -184,14 +184,6 @@ class GraphicsObject(object):
         transformation.scale(*self.scale)
         transformation.translate(*(-x for x in self.anchor))
 
-    def hit_test(self, _x, _y, _z):
-        """Perform a hit test on this object
-
-        Return false if the given point (in local coordinates) is "outside" the
-        object.
-        """
-        return True
-
     def die(self):
         """Destroy this object
 
@@ -211,10 +203,8 @@ class GraphicsObject(object):
         attech to a new one (if new_parent is not ``None``.
         The `to_back` argument is the same as for :meth:`__init__`.
 
-        Beware that reparenting may throw off the mouse tracking mechanism.
-        Specifically, 'leave' and after-drag 'release' events might not fire.
-        Mouse-aware objects should run their leave/release handlers before
-        calling reparent().
+        Beware that reparenting may throw off the pointer tracking mechanism.
+        Specifically, 'leave' and 'release' events might not fire properly.
         """
         assert new_parent is not self
         if self.parent:
@@ -229,30 +219,101 @@ class GraphicsObject(object):
                 new_parent.children.append(self)
             self.parent = new_parent
 
+    def hit_test(self, _x, _y, _z):
+        """Perform a hit test on this object
+
+        Return false if the given point (in local coordinates) is "outside" the
+        object.
+        """
+        return True
+
     def pointer_event(self, event_type, pointer, x, y, z, **kwargs):
-        """Handle a pointer (mouse) event, return true if it as handled
+        """Handle a pointer (mouse) event
 
-        :param type: Can be 'motion', 'press', 'release', 'leave', 'drag',
-        or 'scroll'
-
-        For 'press', return true to "claim" the click/drag operation.
-        Only the "claiming" object will get subsequent drag & release events.
-
-        For 'motion', return True  stop the event from propegating to items
-        underneath, and to register for a 'leave' event.
+        Dispatches to on_pointer_<event> methods. See :cls:`Layer` for the
+        available handlers.
         """
         try:
             handler = getattr(self, 'on_pointer_' + event_type)
         except AttributeError:
-            return self.pointer_event_default_handler(event_type, pointer,
-                x, y, z, **kwargs)
+            pass
         else:
             return handler(pointer, x, y, z, **kwargs)
 
-    def pointer_event_default_handler(self, *args, **kwargs):
+    def on_pointer_motion(self, pointer, x, y, z, **kwargs):
+        """Handle pointer (mouse) movement
+
+        Called when a pointer moves to point (x, y, z) of the object. The
+        coordinates are in the object's own coordinate space.
+
+        Return a true value to stop the event from propagating to objects
+        further down.
+
+        Remember to override the `hit_test` method so the object's shape is
+        known to the pointer handling machinery.
+        """
         pass
 
-    def keyboard_event(self, type, keyboard, **kwargs):
+    def on_pointer_leave(self, pointer, x, y, z, **kwargs):
+        """Handle pointer (mouse) leaving the object
+
+        Called when a pointer moves to point (x, y, z), which is outside the
+        object. The coordinates are in the object's own coordinate space.
+
+        If the pointer left without known coordinates (this can happen,
+        for example, when the object's transformation matrix becomes singular),
+        all of x, y, z will be set to False (which is equal to 0).
+
+        All objects that recieved a 'motion' event for a pointer will recieve a
+        'leave' event for that pointer, unless they (or their parent chains)
+        are destroyed first.
+        """
+        pass
+
+    def on_pointer_press(self, pointer, x, y, z, button, **kwargs):
+        """Handle a pointer (mouse) button press on this object
+
+        Called when a pointer button is pressed on point (x, y, z) of the
+        object. The coordinates are in the object's own coordinate space.
+
+        Return a true value to "claim" the resulting drag operation. The
+        claiming object will receive 'drag' and 'release' pointer events.
+        Returning true also stops the event's propagation to objects further
+        below.
+
+        Subsequent drag and release events follow the pointer even outside the
+        object, including outside the window itself.
+        """
+        pass
+
+    def on_pointer_release(self, pointer, x, y, z, button, **kwargs):
+        """Handle a pointer (mouse) button release on this object
+
+        Called when a pointer button is released on point (x, y, z) of the
+        object. The coordinates are in the object's own coordinate space,
+        and may be outside the object (or even the window).
+
+        Release events are only triggered for objects that "claimed" a press
+        event.
+        The object that claimed a 'press' event for a pointer will recieve a
+        'release' event for that pointer/button combination, unless it
+        (or its parent chain) is destroyed first.
+        """
+        pass
+
+    def on_pointer_drag(self, pointer, x, y, z, button, **kwargs):
+        """Handle a pointer (mouse) drag on this object
+
+        Called when a pointer is dragged (with a button pressed) on point
+        (x, y, z) of the object. The coordinates are in the object's own
+        coordinate space, and may be outside the object (or even the window).
+
+        Drag events are only triggered for objects that "claimed" a press
+        event.
+        """
+        pass
+
+    def keyboard_event(self, event_type, keyboard, **kwargs):
         """Handle a keyboard event, return true if it as handled"""
         pass
 
@@ -307,32 +368,28 @@ class Layer(GraphicsObject):
                 try:
                     child.transform(transformation)
                 except ZeroDivisionError:
-                    yield child, (-1, -1, -1), None
+                    yield child, (False, False, False), None
                 else:
                     try:
                         point = transformation.point
                     except ValueError:
-                        yield child, (-1, -1, -1), None
+                        yield child, (False, False, False), None
                     else:
                         hit = child.hit_test(*point)
                         yield child, point, hit
 
-    def on_pointer_leave(self, pointer, *args, **kwargs):
-        transformation = kwargs['transformation']
-        children = list(self.hovered_children.get(pointer, ()))
-        generator = self._hit_test_generator(children, transformation)
-        for child, point, hit in generator:
-            child.pointer_event('leave', pointer, *point, **kwargs)
-        self.hovered_children.pop(pointer, None)
-
-    def on_pointer_motion(self, pointer, *args, **kwargs):
+    def on_pointer_motion(self, pointer, *point, **kwargs):
         transformation = kwargs['transformation']
         reg = self.dragging_children.get(pointer, {})
         for button, child in reg.iteritems():
             if child in self.children:
                 with transformation.state:
-                    child.transform(transformation)
-                    point = transformation.point
+                    try:
+                        child.transform(transformation)
+                    except ZeroDivisionError:
+                        point = False, False, False
+                    else:
+                        point = transformation.point
                     child.pointer_event('drag', pointer, *point, button=button,
                         **kwargs)
         new_hovered_children = set()
@@ -347,11 +404,26 @@ class Layer(GraphicsObject):
                     break
         hovered = self.hovered_children.get(pointer, set())
         for child in hovered - new_hovered_children:
-            child.pointer_event('leave', pointer, *point, **kwargs)
+            with transformation.state:
+                try:
+                    child.transform(transformation)
+                except ZeroDivisionError:
+                    point = False, False, False
+                else:
+                    point = transformation.point
+                child.pointer_event('leave', pointer, *point, **kwargs)
         self.hovered_children[pointer] = new_hovered_children
         return retval
 
-    def on_pointer_press(self, pointer, *args, **kwargs):
+    def on_pointer_leave(self, pointer, *point, **kwargs):
+        transformation = kwargs['transformation']
+        children = list(self.hovered_children.get(pointer, ()))
+        generator = self._hit_test_generator(children, transformation)
+        for child, point, _hit in generator:
+            child.pointer_event('leave', pointer, *point, **kwargs)
+        self.hovered_children.pop(pointer, None)
+
+    def on_pointer_press(self, pointer, *point, **kwargs):
         transformation = kwargs['transformation']
         button = kwargs['button']
         generator = self._hit_test_generator(self.children, transformation)
@@ -362,7 +434,7 @@ class Layer(GraphicsObject):
                     self.dragging_children[pointer][button] = child
                     return ret
 
-    def on_pointer_release(self, pointer, *args, **kwargs):
+    def on_pointer_release(self, pointer, *point, **kwargs):
         transformation = kwargs['transformation']
         button = kwargs['button']
         try:
@@ -379,13 +451,9 @@ class Layer(GraphicsObject):
             if not self.dragging_children[pointer]:
                 del self.dragging_children[pointer]
 
-    def pointer_event_default_handler(self, event_type, *args, **kwargs):
-        transformation = kwargs['transformation']
-        generator = self._hit_test_generator(self.children, transformation)
-        for child, point, hit in generator:
-            retval = child.pointer_event(event_type, pointer, *args, **kwargs)
-            if retval:
-                return retval
+    def on_pointer_drag(self, *args, **kwargs):
+        # handled from motion
+        pass
 
 
 class DecorationLayer(Layer):
@@ -393,7 +461,7 @@ class DecorationLayer(Layer):
 
     Objects in this layer will not be interactive.
     """
-    def hit_test(self, transformation, **kwargs):
+    def hit_test(self, transformation, **kwargs):  # pylint: disable=W0613
         return False
 
     def pointer_event(self, *_ignore, **_everything):
