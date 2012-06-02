@@ -18,32 +18,22 @@ Hello, World!
     the library is doing for you.
     If that rubs you the wrong way, you should pick a different library.
 
-To greet the planet, type this into your favorite editor ad run it::
+To greet the planet, type this into your favorite editor ad run it:
 
-    from gillcup_graphics import Layer, Text, Window, run
-
-    root_layer = Layer()
-
-    hi_world = Text(root_layer, 'Hello, World!',
-            position=(0.5, 0.5),
-            relative_anchor=(0.5, 0),
-            scale=(0.001, 0.001),
-        )
-
-    Window(root_layer, width=400, height=400)
-
-    run()
+.. literalinclude:: ../examples/01-helloworld.py
 
 It's quite a lot to take in at once, so let's go through it one line at a time.
 
 Obviously, you will need to import some objects first. For our first example
-we'll only need four::
+we'll only need four:
 
-    from gillcup_graphics import Layer, Text, Window, run
+.. literalinclude:: ../examples/01-helloworld.py
+    :lines: 1
 
-Once that's done, we'll create a :class:`~gillcup_graphics.Layer`::
+Once that's done, we'll create a :class:`~gillcup_graphics.Layer`:
 
-    root_layer = Layer()
+.. literalinclude:: ../examples/01-helloworld.py
+    :lines: 3
 
 You probably know about the kind of layers you can find in modern painting
 applications: potentially semi-transparent “sheets” stacked atop
@@ -61,9 +51,10 @@ leaves of the scene tree.
 
 The layer at the root of a scene tree – here, ``root_layer`` – is typically the
 only graphics object that doesn't have a parent.
-For the others, we specify a parent as the first argument when creating them::
+For the others, we specify a parent as the first argument when creating them:
 
-    hi_world = Text(root_layer, 'Hello, World!',
+.. literalinclude:: ../examples/01-helloworld.py
+    :lines: 5
 
 Here, we're creating a :class:`~gillcup_graphics.Text` object in our
 ``root_layer``.
@@ -74,9 +65,10 @@ kept around.)
 
 Unfortunately, just that won't do.
 We also need to specify where we want the text to be drawn.
-Let's put it in the middle::
+Let's put it in the middle:
 
-            position=(0.5, 0.5),
+.. literalinclude:: ../examples/01-helloworld.py
+    :lines: 6
 
 This brings us to the concept of coordinates and sizing.
 Since we did not specify a :attr:`~gillcup_graphics.GraphicsObject.size` for
@@ -106,9 +98,10 @@ So, to really center the object, we'd either need to say something like
 ``anchor = (300, 50)``, and ignore the inaccuracy, or create the object,
 get its size, and set the anchor to half or that.
 
-There's a more elegant approach::
+There's a more elegant approach:
 
-            relative_anchor=(0.5, 0),
+.. literalinclude:: ../examples/01-helloworld.py
+    :lines: 7
 
 ``relative_anchor`` maps the given coordinates from an unit square to the
 object's size and sets ``anchor`` to the result.
@@ -125,10 +118,10 @@ This is purely for æsthetic reasons: the composition tends to look better when
 a centered object is a bit above the actual center.
 
 Now that we know something about our objects' geometry, the last argument
-to the text should start to make sense::
+to the text should start to make sense:
 
-            scale=(0.001, 0.001),
-        )
+.. literalinclude:: ../examples/01-helloworld.py
+    :lines: 8-9
 
 If we tried to put a roughly 600×100 text in a 1×1 window, we'd see,
 in the best case, a small part of a giant white blob.
@@ -139,16 +132,18 @@ To bring the text back to scale, we shrink it to a thousandth of its original
 size, making it roughly 0.6×0.1.
 That will fit in a 1×1 square easily, leaving nice wide margins around.
 
-And now that our scene is constructed, we can worry about displaying it::
+And now that our scene is constructed, we can worry about displaying it:
 
-    Window(root_layer, width=400, height=400)
+.. literalinclude:: ../examples/01-helloworld.py
+    :lines: 11
 
 This creates a special Pyglet window that redirects its draw events to the
 ``root_layer``. [1]_
 
-And now the last step::
+And now the last step:
 
-    run()
+.. literalinclude:: ../examples/01-helloworld.py
+    :lines: 13
 
 The run function simply runs a Pyglet main loop, which handles draw events
 and window close events and various other kinds of events that we haven't

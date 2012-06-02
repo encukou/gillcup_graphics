@@ -6,60 +6,23 @@ Still here? Good.
 
 In this part of the tutorial, we'll learn about the Gillcup clock and
 animations.
-We'll go through the following piece of code, which draws a blinking square::
+We'll go through the following piece of code, which draws a blinking square:
 
-    from gillcup_graphics import Layer, Rectangle, Window, run, RealtimeClock
+.. literalinclude:: ../examples/02-clock.py
 
-    root_layer = Layer()
+Let's fast-forward through the beginning:
 
-    rect = Rectangle(root_layer,
-            size=(0.5, 0.5),
-            position=(0.5, 0.5),
-            relative_anchor=(0.5, 0.5),
-            rotation=45,
-        )
-
-    Window(root_layer, width=400, height=400)
-
-    clock = RealtimeClock()
-
-    def blink(on):
-        if on:
-            rect.opacity = 1
-        else:
-            rect.opacity = 0
-
-        if not rect.dead:
-            clock.schedule(lambda: blink(not on), 0.5)
-
-    blink(True)
-
-    run()
-
-
-
-Let's fast-forward through the beginning::
-
-    from gillcup_graphics import Layer, Rectangle, Window, run, RealtimeClock
-
-    root_layer = Layer()
-
-    rect = Rectangle(root_layer,
-            size=(0.5, 0.5),
-            position=(0.5, 0.5),
-            relative_anchor=(0.5, 0.5),
-            rotation=45,
-        )
-
-    Window(root_layer, width=400, height=400)
+.. literalinclude:: ../examples/02-clock.py
+    :lines: 1-12
 
 The only thing that's different from the previous part of the tutorial is
 that we're using a Rectangle, and the options are a bit different.
 As you probably can guess, the ``rotation`` part rotates the rectangle by 45°.
 
-Next comes the all-important line that creates a clock::
+Next comes the all-important line that creates a clock:
 
-    clock = RealtimeClock()
+.. literalinclude:: ../examples/02-clock.py
+    :lines: 14
 
 Animations in Gillcup aren't necessarily tied to the system time.
 You can use different clocks – for example, to render a movie with a fixed
@@ -69,13 +32,10 @@ speed than your main Clock.
 But here, we happen to be using the RealtimeClock, which is tied to the
 system time, in seconds.
 
-Now, a function that can show or hide our square::
+Now, a function that can show or hide our square:
 
-    def blink(on):
-        if on:
-            rect.opacity = 1
-        else:
-            rect.opacity = 0
+.. literalinclude:: ../examples/02-clock.py
+    :lines: 16-20
 
 The ``opacity`` attribute affects the visibility of our Rectangle – 0 means
 completely transparent, 1 is fully opaque, anything in between that would
@@ -90,10 +50,10 @@ they become attributes of the object so you can set them, like here in
 ``blink``;
 and finally, they can be animated, as we'll see later.
 
-The final lines of our ``blink`` function look like this::
+The final lines of our ``blink`` function look like this:
 
-        if not hi_world.dead:
-            clock.schedule(lambda: blink(not on), 0.5)
+.. literalinclude:: ../examples/02-clock.py
+    :lines: 22-23
 
 Let's start with the ``schedule`` call.
 The :meth:`~gillcup.Clock.schedule` method schedules a function to be
@@ -114,11 +74,10 @@ Normally, objects are removed from the scene via the
 attribute.
 So, we can use ``dead`` to see if it's necessary to schedule the next action.
 
-All that's left is calling ``blink`` for the first time, and running the code::
+All that's left is calling ``blink`` for the first time, and running the code:
 
-    blink(True)
-
-    run()
+.. literalinclude:: ../examples/02-clock.py
+    :lines: 25-27
 
 The ``run`` function starts the Pyglet main loop, which, in addition to taking
 care of drawing our scene, feeds the current time to our ``clock``.
