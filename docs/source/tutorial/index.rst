@@ -17,3 +17,4 @@ Gillcup Graphics mixes with Pyglet or “raw” OpenGL calls easily.
 .. toctree::
     01-helloworld
     02-clock
+    03-animations

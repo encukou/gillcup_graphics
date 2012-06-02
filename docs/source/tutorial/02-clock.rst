@@ -4,8 +4,8 @@ The Clock
 Still here? Good.
 
 
-In this part of the tutorial, we'll learn about the Gillcup clock and
-animations.
+In this part of the tutorial, we'll learn about the Gillcup clock, the time
+source for animations.
 We'll go through the following piece of code, which draws a blinking square:
 
 .. literalinclude:: ../examples/02-clock.py
