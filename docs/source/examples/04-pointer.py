@@ -20,8 +20,9 @@ class DemoRect(gillcup_graphics.Rectangle):
         return True
 
     def on_pointer_leave(self, pointer, x, y, z, **kwargs):
-        self.clock.schedule(gillcup.Animation(self, 'red', 1, time=0.15))
         self.pointers_in.remove(pointer)
+        if not self.pointers_in:
+            self.clock.schedule(gillcup.Animation(self, 'red', 1, time=0.15))
         return True
 
     def on_pointer_press(self, pointer, x, y, z, button, **kwargs):
