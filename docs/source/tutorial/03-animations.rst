@@ -8,7 +8,7 @@ First, let's take a look at this piece of code (differences from the previous
 page are highlighted):
 
 .. literalinclude:: ../examples/03-animations.py
-    :emphasize-lines: 2,19,21,28
+    :emphasize-lines: 2,19,21,28-30
 
 Aside from a new import, the first difference is in the blink function:
 
@@ -23,7 +23,7 @@ units of time ``clock`` uses).
 
 The second changed line is similar – it just animates the value back to zero.
 
-The last added line reads:
+The next added line reads:
 
 .. literalinclude:: ../examples/03-animations.py
     :lines: 28
@@ -34,6 +34,24 @@ However, due to the ``infinite`` timing, it doesn't stop there: it continues
 past 0° and goes on, through -45° in the second second, -90° in the third,
 and so on.
 The final effect is that our square will rotate forever.
+
+The last added line reads:
+
+.. literalinclude:: ../examples/03-animations.py
+    :lines: 30
+
+Here, we re-color our square from white to orange over the course of 5 seconds.
+We're animating a `tuple property` – the ``color`` consists of three values,
+``red``, ``green``, and ``blue``.
+So, we need to pass three values to the Animation.
+We could also animate the component properties individually, with the same
+effect.
+Most tuple properties are like this: ``position``'s components are is ``x``
+and ``y``, ``scale``'s components include ``scale_x`` and ``scale_y``, and so
+on.
+Whether you animate the entire tuple or the compoents is up to you.
+
+-------
 
 The :class:`~gillcup.Animation` class has several options and subclasses that
 let you take control of exactly how the attribute is changed;

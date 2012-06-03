@@ -25,6 +25,8 @@ def blink(on):
 
 blink(True)
 
-clock.schedule(Animation(rect, 'rotation', 0, timing='infinite'))
+clock.schedule(Animation(rect, 'rotation', 0, time=1, timing='infinite'))
+
+clock.schedule(Animation(rect, 'color', 1, 0.5, 0, time=5))
 
 run()

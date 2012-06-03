@@ -11,29 +11,29 @@ class DemoRect(gillcup_graphics.Rectangle):
         super(DemoRect, self).__init__(parent, **kwargs)
         self.clock = clock
         self.pointers_in = set()
-        self.pointers_clicked = set()
+        self.pointers_pressed = set()
 
     def on_pointer_motion(self, pointer, x, y, z, **kwargs):
         if pointer not in self.pointers_in:
-            self.clock.schedule(gillcup.Animation(self, 'green', 0, time=0.15))
+            self.clock.schedule(gillcup.Animation(self, 'red', 0, time=0.15))
         self.pointers_in.add(pointer)
         return True
 
     def on_pointer_leave(self, pointer, x, y, z, **kwargs):
-        self.clock.schedule(gillcup.Animation(self, 'green', 1, time=0.15))
+        self.clock.schedule(gillcup.Animation(self, 'red', 1, time=0.15))
         self.pointers_in.remove(pointer)
         return True
 
     def on_pointer_press(self, pointer, x, y, z, button, **kwargs):
-        if not self.pointers_clicked:
-            self.clock.schedule(gillcup.Animation(self, 'red', 0, time=0.15))
-        self.pointers_clicked.add((pointer, button))
+        if not self.pointers_pressed:
+            self.clock.schedule(gillcup.Animation(self, 'green', 0, time=0.15))
+        self.pointers_pressed.add((pointer, button))
         return True
 
     def on_pointer_release(self, pointer, x, y, z, button, **kwargs):
-        self.pointers_clicked.remove((pointer, button))
-        if not self.pointers_clicked:
-            self.clock.schedule(gillcup.Animation(self, 'red', 1, time=0.15))
+        self.pointers_pressed.remove((pointer, button))
+        if not self.pointers_pressed:
+            self.clock.schedule(gillcup.Animation(self, 'green', 1, time=0.15))
         return True
 
 
@@ -80,5 +80,5 @@ class DemoLayer(gillcup_graphics.Layer):
 if __name__ == '__main__':
     clock = gillcup_graphics.RealtimeClock()
     layer = DemoLayer(clock)
-    window = gillcup_graphics.Window(layer)
+    window = gillcup_graphics.Window(layer, width=500, height=500)
     gillcup_graphics.run()
