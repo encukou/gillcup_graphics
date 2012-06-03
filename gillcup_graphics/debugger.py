@@ -675,16 +675,17 @@ class GraphicsObjectWalker(TreeWalker):
     """TreeWalker for a graphics object
 
     Has up to two children: a tree of property info and a tree of child info
-    The child info is only present when the child list is not an ampty tuple
-    (this indicates that the widget can't have children). In this case, the
-    tree is not expanded by default.
+    The child info is only present when the child list is not there (only
+    layers have children). In this case, the tree is not expanded by default.
     """
     def __init__(self, obj):
         self.list = [PropertiesWalker(obj)]
-        if obj.children != ():
-            self.list.append(ChildrenWalker(obj))
-        else:
+        try:
+            obj.children
+        except AttributeError:
             self.expanded = False
+        else:
+            self.list.append(ChildrenWalker(obj))
         super(GraphicsObjectWalker, self).__init__(obj)
 
     @property
