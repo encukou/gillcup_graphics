@@ -112,6 +112,8 @@ class GraphicsObject(object):
         ``relative_anchor_y``, ``relative_anchor_z`` attributes.""")
     relative_anchor_x, relative_anchor_y, relative_anchor_z = relative_anchor
 
+    hidden = False
+
     def set_animated_properties(self, kwargs):
         """Initializes animated properties with keyword arguments
 
@@ -133,28 +135,34 @@ class GraphicsObject(object):
                     ', '.join(unknown))
 
     def is_hidden(self):
-        """Return true if this object (and any children) shouldn't be shown"""
+        """Return true if this object (and any children) aren't active
+
+        Hidden objects are not shown and do not handle events.
+
+        If the ``hidden`` attribute of self is true, this method will return
+        true.
+        Otherwise, it checks ``self.dead`` and other properties that can hide
+        the object, such as zero scale.
+        """
+        if self.hidden or self.dead or not any(self.scale):
+            return True
         if getattr(self, 'opacity', 1) <= 0:
             return False
-        return self.dead or not any(self.scale)
 
     def do_draw(self, transformation, **kwargs):
         """Draw this object
 
         This method sets up the transformation matrix and calls draw().
-        If this method returns false, the object is removed from its parent.
 
         Subclasses will usually want to override draw(), not this method.
         """
         # XXX: Make sure tree is never deeper than 32
-        if self.dead:
-            return False
-        elif self.is_hidden():
-            return True
+        if self.is_hidden():
+            return
         with transformation.state:
             self.transform(transformation)
             self.draw(transformation=transformation, **kwargs)
-        return True
+        return
 
     def draw(self, **kwargs):
         """Draw this object. Overridden in subclasses.
@@ -193,7 +201,7 @@ class GraphicsObject(object):
         on all children.
         """
         self.dead = True
-        self.parent = None
+        self.reparent(None)
 
     def reparent(self, new_parent, to_back=False):
         """Set a new parent
@@ -232,6 +240,8 @@ class GraphicsObject(object):
         Dispatches to on_pointer_<event> methods. See :class:`Layer` for the
         available handlers.
         """
+        if self.is_hidden():
+            return
         try:
             handler = getattr(self, 'on_pointer_' + event_type)
         except AttributeError:
@@ -314,6 +324,8 @@ class GraphicsObject(object):
 
     def keyboard_event(self, event_type, keyboard, **kwargs):
         """Handle a keyboard event, return true if it as handled"""
+        if self.is_hidden():
+            return
         pass
 
 
@@ -360,12 +372,8 @@ class Layer(GraphicsObject):
     def draw(self, transformation, **kwargs):
         """Draw all of the layer's children"""
         transformation.translate(*self.anchor)
-        self.children = [
-                c for c in self.children if c.do_draw(
-                        transformation=transformation,
-                        **kwargs
-                    )
-            ]
+        for c in self.children:
+            c.do_draw(transformation=transformation, **kwargs)
 
     @staticmethod
     def _hit_test_generator(children, transformation):

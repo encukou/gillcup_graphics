@@ -13,14 +13,11 @@ Window(root_layer, width=400, height=400)
 
 clock = RealtimeClock()
 
-def blink(on):
-    if on:
-        rect.opacity = 1
-    else:
-        rect.opacity = 0
+def blink(hide_flag):
+    rect.hidden = hide_flag
 
     if not rect.dead:
-        clock.schedule(lambda: blink(not on), 0.5)
+        clock.schedule(lambda: blink(not hide_flag), 0.5)
 
 blink(True)
 

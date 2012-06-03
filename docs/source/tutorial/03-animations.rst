@@ -15,6 +15,19 @@ Aside from a new import, the first difference is in the blink function:
 .. literalinclude:: ../examples/03-animations.py
     :lines: 19
 
+The ``opacity`` attribute affects the visibility of our Rectangle – 0 means
+completely transparent, 1 is fully opaque, anything in between that would
+make the Rectangle see-through.
+Opacity, and other properties like ``size``, ``scale``,
+``relative_anchor``, ``rotation`` or ``color``, are Gillcup
+`animated properties`.
+There are several ways to manipulate them:
+they can be set when creating a GraphicsObject, as we've seen
+previously in the tutorial;
+they become attributes of the object so you can set them normally, as in
+``rest.opacity = 0.4``,
+and finally, they can be animated, as we'll see later.
+
 Here, instead of just changing the value, we schedule an
 :class:`~gillcup.Animation` on our clock.
 The Animation will smoothly change ``rect``'s ``opacity`` from its current

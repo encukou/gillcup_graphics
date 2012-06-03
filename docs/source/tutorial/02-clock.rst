@@ -32,28 +32,18 @@ speed than your main Clock.
 But here, we happen to be using the RealtimeClock, which is tied to the
 system time, in seconds.
 
-Now, a function that can show or hide our square:
+Now, we define a simple function that can show or hide our square:
 
 .. literalinclude:: ../examples/02-clock.py
-    :lines: 16-20
+    :lines: 16-17
 
-The ``opacity`` attribute affects the visibility of our Rectangle – 0 means
-completely transparent, 1 is fully opaque, anything in between that would
-make the Rectangle see-through.
-Opacity, and other properties like ``size``, ``scale``,
-``relative_anchor``, ``rotation`` or ``color``, are Gillcup
-`animated properties`.
-There are several ways to manipulate them:
-they can be set when creating a GraphicsObject, as we've seen
-previously in the tutorial;
-they become attributes of the object so you can set them, like here in
-``blink``;
-and finally, they can be animated, as we'll see later.
+The ``hidden`` attribute sets the visibility of our Rectangle – either it's
+there, or it isn't.
 
 The final lines of our ``blink`` function look like this:
 
 .. literalinclude:: ../examples/02-clock.py
-    :lines: 22-23
+    :lines: 19-20
 
 Let's start with the ``schedule`` call.
 The :meth:`~gillcup.Clock.schedule` method schedules a function to be
@@ -77,7 +67,7 @@ So, we can use ``dead`` to see if it's necessary to schedule the next action.
 All that's left is calling ``blink`` for the first time, and running the code:
 
 .. literalinclude:: ../examples/02-clock.py
-    :lines: 25-27
+    :lines: 22-24
 
 The ``run`` function starts the Pyglet main loop, which, in addition to taking
 care of drawing our scene, feeds the current time to our ``clock``.
