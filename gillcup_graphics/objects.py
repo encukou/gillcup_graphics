@@ -114,6 +114,8 @@ class GraphicsObject(object):
 
     hidden = False
 
+    interesting_attribute_names = ['hidden']
+
     def set_animated_properties(self, kwargs):
         """Initializes animated properties with keyword arguments
 
