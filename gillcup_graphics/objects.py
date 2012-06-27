@@ -326,6 +326,53 @@ class GraphicsObject(object):
         """Handle a keyboard event, return true if it as handled"""
         if self.is_hidden():
             return
+
+        try:
+            handler = getattr(self, 'on_' + event_type)
+        except AttributeError:
+            pass
+        else:
+            return handler(keyboard=keyboard, **kwargs)
+
+    def on_key_press(self, keyboard, key, modifiers):
+        """Handle a key press
+
+        Called when a keyboard key is pressed.
+
+        Return True if the event has been handled.
+
+        Do not use this event for text input: there's on_key_text for that.
+        """
+        return False
+
+    def on_key_release(self, keyboard, key, modifiers):
+        """Handle a key press
+
+        Called when a keyboard key is released.
+
+        Return True if the event has been handled.
+
+        Do not use this event for text input: there's on_text for that.
+        """
+        return False
+
+    def on_text(self, keyboard, text):
+        """Handle a key press
+
+        Called when text is entered.
+
+        Return True if the event has been handled.
+        """
+        return False
+
+    def on_text_motion(self, keyboard, motion):
+        """Handle a key press
+
+        Called when the text cursor should be moved. Consult the Pyglet manual
+        for details.
+
+        Return True if the event has been handled.
+        """
         pass
 
 
@@ -472,6 +519,18 @@ class Layer(GraphicsObject):
     def on_pointer_drag(self, *args, **kwargs):
         # handled from motion
         pass
+
+    def keyboard_event(self, event_type, keyboard, **kwargs):
+        """Handle a keyboard event, return true if it as handled"""
+        result = super(Layer, self).keyboard_event(
+            event_type, keyboard, **kwargs)
+        if result:
+            return result
+
+        for child in reversed(self.children):
+            result = child.keyboard_event(event_type, keyboard, **kwargs)
+            if result:
+                return result
 
 
 class DecorationLayer(Layer):

@@ -108,11 +108,11 @@ class Window(pyglet.window.Window):  # pylint: disable=W0223
 
     # pylint: disable=W0221
     def on_key_press(self, key, modifiers):
-        self.layer.keyboard_event('press', 'main',
+        self.layer.keyboard_event('key_press', 'main',
             key=key, modifiers=modifiers)
 
     def on_key_release(self, key, modifiers):
-        self.layer.keyboard_event('release', 'main',
+        self.layer.keyboard_event('key_release', 'main',
             key=key, modifiers=modifiers)
 
     def on_text(self, text):
@@ -121,10 +121,10 @@ class Window(pyglet.window.Window):  # pylint: disable=W0223
             text = text.encode('latin-1').decode('utf-8')
         except UnicodeError:
             pass
-        self.layer.do_keyboard_event('type', 'main', text=text)
+        self.layer.keyboard_event('text', 'main', text=text)
 
     def on_text_motion(self, motion):
-        self.layer.do_keyboard_event('motion', 'main', motion=motion)
+        self.layer.keyboard_event('text_motion', 'main', motion=motion)
 
 
 class RealtimeClock(gillcup.Clock):
