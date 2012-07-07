@@ -114,6 +114,8 @@ class GraphicsObject(object):
 
     hidden = False
 
+    interesting_attribute_names = ['hidden']
+
     def set_animated_properties(self, kwargs):
         """Initializes animated properties with keyword arguments
 
@@ -378,6 +380,8 @@ class GraphicsObject(object):
 
 class RelativeAnchor(Effect):
     """Put on an ``anchor`` property to make it respect relative_anchor"""
+    is_constant = True
+
     def __init__(self, obj):
         super(RelativeAnchor, self).__init__()
         self.object = obj
@@ -628,6 +632,8 @@ class Text(GraphicsObject):
 
         The API regarding font size is experimental.
     """
+    interesting_attribute_names = ['size']
+
     def __init__(self, parent, text, font_name=None, **kwargs):
         super(Text, self).__init__(parent, **kwargs)
         self.text = text
