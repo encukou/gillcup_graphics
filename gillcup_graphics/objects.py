@@ -538,7 +538,7 @@ class DecorationLayer(Layer):
 
     Objects in this layer will not be interactive.
     """
-    def hit_test(self, transformation, **kwargs):  # pylint: disable=W0613
+    def hit_test(self, *_ignore, **_everything):
         return False
 
     def pointer_event(self, *_ignore, **_everything):
