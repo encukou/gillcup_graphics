@@ -87,7 +87,7 @@ centered at all!
 The solution to this problem is to set the ``anchor`` property.
 The anchor specifies the origin of the coordinate system, in whatever units
 the object itself uses.
-Just what we need? Well, anmost.
+Just what we need? Well, almost.
 The catch is in the units.
 Unlike Layers, a Text's size is not 1×1 units, instead,
 it's the pixel size of the underlying glyph textures.
