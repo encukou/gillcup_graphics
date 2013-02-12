@@ -13,6 +13,7 @@ Window(root_layer, width=400, height=400)
 
 clock = RealtimeClock()
 
+
 def announce_end():
     print('done')
 

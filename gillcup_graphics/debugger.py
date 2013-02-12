@@ -31,6 +31,7 @@ GRAYS = [0, 3, 7, 11, 15, 19, 23, 27, 31, 35, 38, 42, 46, 50, 52, 58, 62,
     66, 70, 74, 78, 82, 85, 89, 93, 100]
 COLORS = '068adf'
 
+
 def make_palette():
     """Create an urwid palette for the TUI"""
     fg = 'light gray'
@@ -62,6 +63,7 @@ def make_palette():
 
 default_palette = make_palette()
 
+
 def make_select_mapping(item):
     """Mapping for fill_attr_apply to get the "selected" palette entries"""
     if item:
@@ -77,6 +79,8 @@ select_mapping = dict((i[0], make_select_mapping(i[0]))
 
 
 original_do_draw = gillcup_graphics.GraphicsObject.do_draw
+
+
 def monkeypatched_do_draw(self, *args, **kwargs):
     """Wrap GraphicsObject.do_draw method with a timer"""
     start = time.time()
@@ -110,7 +114,7 @@ class Main(urwid.Frame):
 
     def tick(self, loop, _data):
         """Manual tick for the Pyglet main loop"""
-        loop.set_alarm_in(1 / 60, self.tick, None)
+        loop.set_alarm_in(1 / 20, self.tick, None)
         pyglet.clock.tick()
 
         for window in pyglet.app.windows:
@@ -118,7 +122,6 @@ class Main(urwid.Frame):
             window.dispatch_events()
             window.dispatch_event('on_draw')
             window.flip()
-
 
     def keypress(self, size, key):
         """Global keypress handler"""
@@ -267,7 +270,6 @@ class TreeWidget(urwid.FlowWidget):
     indent_size = 2
 
     cache = collections.defaultdict(weakref.WeakKeyDictionary)
-
 
     def __init__(self, item, indent):
         super(TreeWidget, self).__init__()
@@ -819,10 +821,11 @@ class EffectWalker(PropertiesWalker):
     def list(self):
         obj = self.obj
         element_effect = getattr(obj, 'element_effect', None)
-        if element_effect:
-            return [obj.element_effect]
-        else:
-            return []
+        effects = []
+        while element_effect:
+            effects.append(element_effect)
+            element_effect = getattr(element_effect, 'parent', None)
+        return effects
 
     @property
     def widget(self):
@@ -866,6 +869,7 @@ def run(clock, layer, *args, **kwargs):
     loop.set_alarm_in(1 / 30, main.tick, None)
     gillcup_graphics.Window(layer, *args, **kwargs)
     loop.run()
+
 
 def demo():
     """Some kind of demo to test(/show off?) the debugger"""

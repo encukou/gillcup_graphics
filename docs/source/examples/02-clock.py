@@ -13,6 +13,7 @@ Window(root_layer, width=400, height=400)
 
 clock = RealtimeClock()
 
+
 def blink(hide_flag):
     rect.hidden = hide_flag
 

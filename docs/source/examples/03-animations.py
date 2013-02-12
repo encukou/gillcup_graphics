@@ -14,6 +14,7 @@ Window(root_layer, width=400, height=400)
 
 clock = RealtimeClock()
 
+
 def blink(on):
     if on:
         clock.schedule(Animation(rect, 'opacity', 1, time=0.3))

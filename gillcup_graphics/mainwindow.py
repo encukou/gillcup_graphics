@@ -53,6 +53,7 @@ class Window(pyglet.window.Window):  # pylint: disable=W0223
     # pylint: disable=W0221
     def on_draw(self):
         gl.glClearColor(0, 0, 0, 0)
+        gl.glClearDepth(1)
         self.clear()
         gl.glEnable(gl.GL_LINE_SMOOTH)
         gl.glEnable(gl.GL_BLEND)
@@ -112,8 +113,10 @@ class Window(pyglet.window.Window):  # pylint: disable=W0223
             key=key, modifiers=modifiers)
 
     def on_key_release(self, key, modifiers):
-        self.layer.keyboard_event('key_release', 'main',
+        e = self.layer.keyboard_event('key_release', 'main',
             key=key, modifiers=modifiers)
+        if not e and key == pyglet.window.key.ESCAPE:
+            self.close()
 
     def on_text(self, text):
         try:

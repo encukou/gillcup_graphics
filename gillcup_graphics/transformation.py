@@ -138,13 +138,16 @@ class GlTransformation(BaseTransformation):
         gl.glPopMatrix()
 
     def translate(self, x=0, y=0, z=0):
-        gl.glTranslatef(x, y, z)
+        if x or y or z:
+            gl.glTranslatef(x, y, z)
 
     def rotate(self, angle, x=0, y=0, z=1):
-        gl.glRotatef(angle, x, y, z)
+        if angle:
+            gl.glRotatef(angle, x, y, z)
 
     def scale(self, x=1, y=1, z=1):
-        gl.glScalef(x, y, z)
+        if x != 1 or y != 1 or z != 1:
+            gl.glScalef(x, y, z)
 
     def premultiply(self, values):
         gl.glMultMatrixf(*values)

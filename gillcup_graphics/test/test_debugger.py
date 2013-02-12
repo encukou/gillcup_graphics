@@ -31,8 +31,8 @@ class DebugTreeWalker(debugger.TreeWalker):
         """Check that tree positions are the as given, validating all links
         """
         assert positions[0] == []
-        assert self.prev_position(positions[0]) == None
-        assert self.next_position(positions[-1]) == None
+        assert self.prev_position(positions[0]) is None
+        assert self.next_position(positions[-1]) is None
         for a, b in zip(positions, positions[1:]):
             self._check_pair(a, b)
         assert self.last_position() == positions[-1]
@@ -51,8 +51,8 @@ class TestTreeWalker(object):
     def test_empty(self):
         """Test an empty TreeWalker"""
         walker = DebugTreeWalker([])
-        assert walker.next_position([]) == None
-        assert walker.prev_position([]) == None
+        assert walker.next_position([]) is None
+        assert walker.prev_position([]) is None
 
     def test_one_element(self):
         """Test a simple one-element TreeWalker"""

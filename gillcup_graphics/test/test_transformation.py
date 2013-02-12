@@ -363,6 +363,7 @@ def test_premultiply_random(transformation):
             423976, 612101, 410667, 1
         )
 
+
 def test_inverse(matrix):
     """Test taking the inverse of an affine matrix"""
     matrix.premultiply((

@@ -14,6 +14,7 @@ Window(root_layer, width=400, height=400)
 
 clock = RealtimeClock()
 
+
 @process_generator
 def process():
     while not rect.dead:

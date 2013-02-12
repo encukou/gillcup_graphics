@@ -225,8 +225,9 @@ htmlhelp_basename = 'Gillcupdoc'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual])
 latex_documents = [
-  ('index', 'GillcupGraphics.tex', u'Gillcup Graphics Documentation',
-   u'Petr Viktorin', 'manual'),
+    (
+        'index', 'GillcupGraphics.tex', u'Gillcup Graphics Documentation',
+        u'Petr Viktorin', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
