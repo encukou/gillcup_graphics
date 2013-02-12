@@ -524,6 +524,16 @@ class Layer(GraphicsObject):
         # handled from motion
         pass
 
+    def on_pointer_scroll(self, *args, **kwargs):
+        # handled from motion
+        transformation = kwargs['transformation']
+        generator = self._hit_test_generator(self.children, transformation)
+        for child, point, hit in generator:
+            if hit:
+                ret = child.pointer_event('scroll', *args, **kwargs)
+                if ret:
+                    return ret
+
     def keyboard_event(self, event_type, keyboard, **kwargs):
         """Handle a keyboard event, return true if it as handled"""
         result = super(Layer, self).keyboard_event(
