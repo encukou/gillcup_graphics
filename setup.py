@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 setup_args = dict(
     name='gillcup_graphics',
-    version='0.2.0-alpha.0',
+    version='0.2.0-alpha.1',
     packages=find_packages(),
 
     description="""Pyglet graphics for Gillcup""",

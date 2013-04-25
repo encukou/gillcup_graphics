@@ -33,8 +33,8 @@ from the gillcup_graphics package:
     (from :mod:`gillcup_graphics.mainwindow`)
 """
 
-__version__ = '0.2.0-alpha.0'
-__version_info__ = (0, 2, 0, 'alpha', 0)
+__version__ = '0.2.0-alpha.1'
+__version_info__ = (0, 2, 0, 'alpha', 1)
 
 from gillcup_graphics.objects import (
     GraphicsObject, Layer, DecorationLayer, Rectangle, Sprite, Text)
