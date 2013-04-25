@@ -682,8 +682,9 @@ class Text(GraphicsObject):
     def draw(self, **kwargs):
         self.setup()
         label = self.label
-        color = self.color + (self.opacity, )
-        label.color = [int(a * 255) for a in color]
+        color = [int(a * 255) for a in self.color + (self.opacity, )]
+        if label.color != color:
+            label.color = color
         displayed_text = self.text[:int(self.characters_displayed)]
         if label.text != displayed_text:
             label.text = displayed_text
