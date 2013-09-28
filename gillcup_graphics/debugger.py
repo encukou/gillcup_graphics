@@ -773,7 +773,10 @@ class PropertyWalker(TreeWalker):
     def __init__(self, obj, name):
         super(PropertyWalker, self).__init__(obj)
         self.name = name
-        self.prop = getattr(type(obj), name)
+        try:
+            self.prop = getattr(type(obj), name)
+        except AttributeError:
+            self.get_effect = None
         try:
             self.get_effect = self.prop.get_effect
         except AttributeError:
@@ -797,7 +800,7 @@ class PropertyWalker(TreeWalker):
 
     @property
     def widget(self):
-        value = getattr(self.obj, self.name)
+        value = getattr(self.obj, self.name, '<MISSING>')
         widget = NonCachedText([self.name, ' ', str(value)])
         if self.get_effect:
             effect = self.get_effect(self.obj)
